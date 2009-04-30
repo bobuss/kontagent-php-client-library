@@ -1,6 +1,6 @@
 <?php
 
-// Kontagent an_client lib version 0.2.16
+// Kontagent an_client lib version KONTAGENT_VERSION_NUMBER
 include_once 'kt_comm_layer.php';
 
 class Analytics_Utils
@@ -14,7 +14,8 @@ class Analytics_Utils
                                       'kt_ut'=>1,
                                       'kt_t'=>1,
                                       'kt_st1'=>1,
-                                      'kt_st2'=>1);
+                                      'kt_st2'=>1,
+                                      'kt_st3'=>1);
     
     private static $s_install_args = array('d'=>1,
                                            'ut'=>1,
@@ -26,8 +27,10 @@ class Analytics_Utils
     const undirected_val = 'u';    
     const URL_REGEX_STR_NO_HREF = '/https?:\/\/[^\s>\'"]+/';
     const URL_REGEX_STR = '/(href\s*=.*?)(https?:\/\/[^\s>\'"]+)/';
+    const VO_PARAM_REGEX_STR = '/\{\*KT_AB_MSG\*\}/';
     const ESC_URL_UT_REGEX_STR = '/(ut%.*?)%/';
     const ESC_URL_SUT_REGEX_STR = '/(sut%.*?)%/';
+
     
     public $m_backend_api_key;
     private $m_backend_secret_key;
@@ -37,12 +40,17 @@ class Analytics_Utils
     private $m_canvas_url;
     private $m_aggregator;
     private $m_invite_uuid;
+    private $m_invite_message_info;
     
     // temporary variables for feed_publishUserAction to pass values to replace_kt_comm_link_helper
     private $m_template_bundle_id_tmp;
     private $m_st1_tmp;
     private $m_st2_tmp;
+    private $m_st3_tmp;
     private $m_query_str_tmp;
+    private $m_msg_text_tmp;
+    
+    public $m_ab_testing_mgr;
     
     
     private function __construct($kt_api_key,$kt_secret_key,
@@ -56,8 +64,14 @@ class Analytics_Utils
         $this->m_canvas_url = $canvas_url;
         $this->m_aggregator = new Kt_Comm($kt_backend_host, $kt_backend_port);        
         $this->m_invite_uuid = 0;
+        $this->m_invite_message_info = null;
         $this->m_backend_host = $kt_backend_host;
         $this->m_backend_port = $kt_backend_port;
+    }
+
+    public function set_ab_testing_mgr($ab_testing_mgr)
+    {
+        $this->m_ab_testing_mgr = $ab_testing_mgr;
     }
     
     public function override_backend_host($kt_backend_host, $kt_backend_port)
@@ -94,6 +108,7 @@ class Analytics_Utils
         return false;
     }    
 
+    
     // Invoke this function with the fb_sig_* but excludes the fb_sig_ prefix.
     // For example, for fb_sig_user, pass in "user" as the $param_name argument.
     // If it's an iframe application, it will switch to use FACEBOOK_API_KEY . "_user"
@@ -115,11 +130,7 @@ class Analytics_Utils
             {
                 if ( isset($_REQUEST['fb_sig_canvas_user']) )
                 {
-                    // It will get here if it's an canvas app, and the app hasn't been authorized yet.
-                    // Also, we'll only get fb_sig_canvas_user the first time the canvas app is loaded.
-                    // Without this block, we can't record the r field in ntr, inr, and ucc.
                     $r = $_REQUEST['fb_sig_canvas_user'];
-                    setcookie("KT_USER", $r, time()+ 86400); // one day
                 }
                 else
                 {
@@ -133,8 +144,16 @@ class Analytics_Utils
         
         return $r;
     }
-    
-    private function gen_kt_comm_query_str($comm_type, $template_id, $subtype1, $subtype2, &$ret_str){
+
+    private function gen_ut_cookie_key(){
+        return $this->m_backend_api_key."_ut";
+    }
+
+    private function gen_sut_cookie_key(){
+        return $this->m_backend_api_key."_sut";
+    }
+
+    private function gen_kt_comm_query_str($comm_type, $template_id, $subtype1, $subtype2, $subtype3, &$ret_str){
         $param_array = array();
         $dir_val;       
         $uuid = 0;
@@ -171,7 +190,10 @@ class Analytics_Utils
         if($subtype2 != null){
             $param_array['kt_st2'] = $subtype2;
         }
-
+        if($subtype3 != null){
+            $param_array['kt_st3'] = $subtype3;
+        }
+        
         $ret_str = http_build_query($param_array, '', '&');
         return $uuid;
     }
@@ -182,7 +204,7 @@ class Analytics_Utils
         //$input_txt = '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:fb="http://apps.facebook.com/ns/1.0" targetNamespace="http://apps.facebook.com/ns/1.0" elementFormDefault="qualified" attributeFormDefault="unqualified">'.$this->xmlentities($input_txt).'</xs:schema>';
 
         $query_str;
-        $uuid = $this->gen_kt_comm_query_str($comm_type, $template_id, $subtype1, $subtype2, $query_str);
+        $uuid = $this->gen_kt_comm_query_str($comm_type, $template_id, $subtype1, $subtype2, null, $query_str);
         $this->m_query_str_tmp = $query_str;
 
         $input_txt = preg_replace_callback(self::URL_REGEX_STR,
@@ -192,6 +214,20 @@ class Analytics_Utils
         return $uuid;
     }
 
+    private function gen_kt_comm_link_vo(&$input_txt, $comm_type, $subtype1, $subtype2, $subtype3)
+    {
+        $query_str;
+        $uuid = $this->gen_kt_comm_query_str($comm_type, null, $subtype1, $subtype2, $subtype3, $query_str);
+        $this->m_query_str_tmp = $query_str;
+        
+        $input_txt = preg_replace_callback(self::URL_REGEX_STR,
+                                           array($this, 'replace_kt_comm_link_helper_directed'),
+                                           $input_txt);
+        
+        return $uuid;
+        
+    }
+        
     private function xmlentities ( $string )
     {
         $arry =  split('&', $string);
@@ -299,11 +335,17 @@ class Analytics_Utils
                                      $this->m_template_bundle_id_tmp,
                                      $this->m_st1_tmp,
                                      $this->m_st2_tmp,
+                                     $this->m_st3_tmp,
                                      $query_str);
 
         return $this->append_kt_query_str($input_str, $query_str);
     }
     
+    private function fill_message_with_ab_message($matches)
+    {
+        return $this->m_msg_text_tmp;
+    }
+        
     private function gen_kt_comm_link_templatized_data(&$input_txt, $comm_type, $template_id, $subtype1, $subtype2)
     {
         $data_arry = json_decode($input_txt, true);
@@ -434,7 +476,7 @@ class Analytics_Utils
                                              array('s'=>$uid));
     }
 
-    private function an_notification_click($has_been_added, $uuid, $template_id, $subtype1, $subtype2, $recipient_uid = null)
+    private function an_notification_click($has_been_added, $uuid, $template_id, $subtype1, $subtype2, $subtype3, $recipient_uid = null)
     {
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
@@ -445,10 +487,11 @@ class Analytics_Utils
                                                    'tu' => 'ntr',
                                                    't' => $template_id,
                                                    'st1' => $subtype1,
-                                                   'st2' => $subtype2));
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3));
     }
     
-    private function an_notification_email_click($has_been_added, $uuid, $template_id, $subtype1, $subtype2, $recipient_uid = null){
+    private function an_notification_email_click($has_been_added, $uuid, $template_id, $subtype1, $subtype2, $subtype3, $recipient_uid = null){
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
                                              "nei",
@@ -458,10 +501,11 @@ class Analytics_Utils
                                                    'tu' => 'nei',
                                                    't' => $template_id,
                                                    'st1' => $subtype1,
-                                                   'st2' => $subtype2));
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3));
     }
 
-    private function an_invite_send($sender_uid, $recipient_uid_arry, $uuid, $invite_template_id = null, $subtype1 = null, $subtype2 = null){
+    private function an_invite_send($sender_uid, $recipient_uid_arry, $uuid, $invite_template_id = null, $subtype1 = null, $subtype2 = null, $subtype3 = null){
        $param_array = array('s' => $sender_uid,
                             'u' => $uuid);
 
@@ -474,14 +518,16 @@ class Analytics_Utils
            $param_array['st1'] = $subtype1;
        if(isset($subtype2))
            $param_array['st2'] = $subtype2;
-
+       if(isset($subtype3))
+           $param_array['st3'] = $subtype3;
+           
        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
                                             $this->m_backend_api_key, $this->m_backend_secret_key,
                                             "ins",
                                             $param_array);
    }
 
-   private function an_invite_click($has_been_added, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $recipient_uid = null){
+    private function an_invite_click($has_been_added, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $subtype3=null, $recipient_uid = null){
        
        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
                                             $this->m_backend_api_key, $this->m_backend_secret_key,
@@ -492,10 +538,11 @@ class Analytics_Utils
                                                   'tu' => 'inr',
                                                   't' => $template_id,
                                                   'st1' => $subtype1,
-                                                  'st2' => $subtype2));
+                                                  'st2' => $subtype2,
+                                                  'st3' => $subtype3));
    }
 
-   private function an_app_undirected_comm_click($uid, $type, $template_id, $subtype1, $subtype2, $has_added, $short_tag){
+    private function an_app_undirected_comm_click($uid, $type, $template_id, $subtype1, $subtype2, $subtype3, $has_added, $short_tag){
        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
                                             $this->m_backend_api_key, $this->m_backend_secret_key,
                                             "ucc",
@@ -504,6 +551,7 @@ class Analytics_Utils
                                                   't'=>$template_id,
                                                   'st1'=>$subtype1,
                                                   'st2'=>$subtype2,
+                                                  'st3'=>$subtype3,
                                                   'i'=>$has_added,
                                                   'su'=>$short_tag));
    }
@@ -542,6 +590,9 @@ class Analytics_Utils
    // Third, no need to deal with refreshing the url with kt_params in it.
    // Pass ids along. Since we are doing a redirect after done handling kt params,
    // we need to forward the ids array for invite_send event.   
+   // 
+   // Saves kt_ut or sut as <kt_api_key>_ut and <kt_api_key>_sut, respectively, in the cookie, so that we can
+   // handle apps that don't force its users to install the apps immediately.
    private function get_stripped_kt_args_url($short_tag=null, $ids_array=null)
    {
        $param_array = array();
@@ -560,6 +611,7 @@ class Analytics_Utils
                else if($arg == 'kt_ut')
                {
                    $param_array['ut'] = $val;
+                   setcookie($this->gen_ut_cookie_key(), $val, time()+600); // 10 minutes
                }
            }
        }
@@ -567,6 +619,7 @@ class Analytics_Utils
        if($short_tag != null)
        {
            $param_array['sut'] = $short_tag;
+           setcookie($this->gen_sut_cookie_key(), $val, time()+600);
        }
 
        if($ids_array != null)
@@ -577,6 +630,24 @@ class Analytics_Utils
        return $this->build_stripped_url($param_array);
    }
 
+   public function prolong_ut_cookie_if_set()
+   {
+       if(!empty($_COOKIE[$this->gen_ut_cookie_key()]))
+       {
+           $val = $_COOKIE[$this->gen_ut_cookie_key()];
+           setcookie($this->gen_ut_cookie_key(), $val, time()+600); // 10 minutes
+       }       
+   }
+
+   public function prolong_sut_cookie_if_set()
+   {
+       if(!empty($_COOKIE[$this->gen_sut_cookie_key()]))
+       {
+           $val = $_COOKIE[$this->gen_sut_cookie_key()];
+           setcookie($this->gen_sut_cookie_key(), $val, time()+600); // 10 minutes
+       }       
+   }
+   
    private function build_stripped_url($param_array)
    {
        // get the script name only minus the call_back_uri
@@ -653,6 +724,15 @@ class Analytics_Utils
       
         return dechex($a ^ $b ^ $c);
     }
+
+    public function gen_notifications_link_vo(&$notification, $msg_text, $subtype1, $subtype2, $subtype3)
+    {
+        $this->m_msg_text_tmp = $msg_text;
+        $notification = preg_replace_callback(self::VO_PARAM_REGEX_STR,
+                                              array($this,  'fill_message_with_ab_message'),
+                                              $notification);
+        return $this->gen_kt_comm_link_vo($notification, 'nt', $subtype1, $subtype2, $subtype3);
+    }
     
     public function gen_notifications_link(&$notification, $template_id = null, $subtype1 = null, $subtype2 = null)
     {
@@ -664,6 +744,15 @@ class Analytics_Utils
         return $this->gen_kt_comm_link($email_fbml, 'nte', $template_id, $subtype1, $subtype2); 
     }
 
+    public function gen_email_link_vo(&$email_fbml, $msg_text, $subtype1 = null, $subtype2 = null, $subtype3=null)
+    {
+        $this->m_msg_text_tmp = $msg_text;
+        $email_fbml = preg_replace_callback(self::VO_PARAM_REGEX_STR,
+                                            array($this,  'fill_message_with_ab_message'),
+                                            $email_fbml);
+        return $this->gen_kt_comm_link_vo($email_fbml, 'nte', $subtype1, $subtype2, $subtype3);
+    }
+        
     public function gen_feed_link(&$template, $template_id = null, $subtype1 = null, $subtype2 = null)
     {
         return $this->gen_kt_comm_link($email_fbml, 'fdp', $template_id, $subtype1, $subtype2); 
@@ -675,11 +764,14 @@ class Analytics_Utils
     }
 
     // $template_bundle_id: bundle_id from registerTemplateBundle.
-    public function gen_feed_publishUserAction(&$data, $template_bundle_id, $subtype1 = null, $subtype2 = null)
+    public function gen_feed_publishUserAction(&$data, $template_bundle_id,
+                                               $subtype1 = null, $subtype2 = null, $subtype3 = null,
+                                               $msg_text = null)
     {
         $this->m_template_bundle_id_tmp = $template_bundle_id;
         $this->m_st1_tmp = $subtype1;
         $this->m_st2_tmp = $subtype2;
+        $this->m_st3_tmp = $subtype3;
         
         if(is_array($data))
             $data_arry = $data;
@@ -691,7 +783,7 @@ class Analytics_Utils
             foreach($data_arry as $key => $value)
             {
                 // read http://uk.php.net/manual/en/language.pseudo-types.php#language.types.callback:
-                // for why I'm doing array($this, 'replace_kt_comm_link_helper'
+                // for why I'm doing array($this, 'replace_kt_comm_link_helper')
                 // ASSUMPTION: All urls begin with http or https. No relative urls.                
                 if($key == "images")
                 {
@@ -722,10 +814,78 @@ class Analytics_Utils
                     $data_arry[$key] = $new_value;
                 }                
             }// foreach
+
+            if( $msg_text != null )
+            {
+                $data_arry['KT_AB_MSG'] = $msg_text;
+            }
             $data = json_encode($data_arry);
         }
     }
     
+    public function format_kt_st1($st1_str)
+    {
+        return "aB_".$st1_str;
+    }
+
+    public function format_kt_st2($st2_str)
+    {
+        return "m".$st2_str;
+    }
+
+    public function format_kt_st3($st3_str)
+    {
+        return "p".$st3_str;
+    }
+    
+    public function kt_get_invite_post_link_vo($invite_post_link, $campaign)
+    {
+        if ($this->m_invite_message_info == null)
+        {
+            $msg_info_array = $this->m_ab_testing_mgr->get_ab_testing_message($campaign);
+            $this->m_invite_message_info = $msg_info_array;
+        }
+        else
+        {
+            $msg_info_array = $this->m_invite_message_info;
+            $this->m_invite_message_info = null;
+        }
+        
+        $param_array = array();        
+
+        if ($this->m_invite_uuid == 0)
+        {
+            $this->m_invite_uuid = $this->gen_long_uuid();
+            $uuid = $this->m_invite_uuid;
+        }
+        else
+        {
+            $uuid = $this->m_invite_uuid;
+            $this->m_invite_uuid = 0;
+        }
+            
+        $param_array['kt_ut'] = $uuid;
+        $param_array['kt_uid'] = $this->get_fb_param('user');
+        $param_array['kt_type'] = 'ins'; 
+
+        $param_array['kt_st1'] = $this->format_kt_st1($campaign);
+        
+        //$message_id = $this->m_ab_testing_mgr->get_message_id();
+        $message_id = $msg_info_array[0];
+        $param_array['kt_st2'] = $this->format_kt_st2($message_id);
+        
+        $page_info = $this->m_ab_testing_mgr->get_selected_page_info($campaign);
+        $param_array['kt_st3'] = $this->format_kt_st3($page_info[0]);
+        
+        $r = array();
+        $r['url']=$this->append_kt_query_str($invite_post_link, http_build_query($param_array,'', '&'));
+        $r['message_id'] = $msg_info_array[0];
+        $r['message'] = $msg_info_array[2];
+        
+        return $r;
+    }
+    
+    //OG
     public function kt_get_invite_post_link($invite_post_link,
                                             $template_id = null, $subtype1 = null, $subtype2 = null)
     {
@@ -754,7 +914,7 @@ class Analytics_Utils
 
         return $this->append_kt_query_str($invite_post_link, http_build_query($param_array,'', '&'));
     }
-
+    
     public function kt_get_invite_content_link($invite_content_link,
                                                $template_id = null, $subtype1 = null , $subtype2 = null)
     {
@@ -785,7 +945,52 @@ class Analytics_Utils
         return $this->append_kt_query_str($invite_content_link, http_build_query($param_array,'', '&'));
     }
     
-    public function kt_notifications_send($uid, $to_ids, $uuid, $template_id=null, $subtype1=null, $subtype2=null)
+    public function kt_get_invite_content_link_vo($invite_content_link, $campaign)
+    {
+        if ($this->m_invite_message_info == null)
+        {
+            $msg_info_array = $this->m_ab_testing_mgr->get_ab_testing_message($campaign);
+            $this->m_invite_message_info = $msg_info_array;
+        }
+        else
+        {
+            $msg_info_array = $this->m_invite_message_info;
+            $this->m_invite_message_info = null;
+        }
+
+        if ($this->m_invite_uuid == 0)
+        {
+            $this->m_invite_uuid = $this->gen_long_uuid();
+            $uuid = $this->m_invite_uuid;
+        }
+        else
+        {
+            $uuid = $this->m_invite_uuid;
+            $this->m_invite_uuid = 0;
+        }
+        
+        $param_array['kt_uid'] = $this->get_fb_param('user');
+
+        $param_array['kt_d'] = Analytics_Utils::directed_val;
+        $param_array['kt_ut'] = $uuid;
+        $param_array['kt_uid'] = $this->get_fb_param('user');
+        $param_array['kt_type'] = 'in';
+
+        $param_array['kt_st1'] = $this->format_kt_st1($campaign);
+        $param_array['kt_st2'] = $this->format_kt_st2($msg_info_array[0]);        
+
+        $page_info = $this->m_ab_testing_mgr->get_selected_page_info($campaign);
+        $param_array['kt_st3'] = $this->format_kt_st3($page_info[0]);
+
+        $r = array();
+        $r['url'] = $this->append_kt_query_str($invite_content_link, http_build_query($param_array, '', '&'));
+        $r['message_id'] = $msg_info_array[0];
+        $r['message'] = $msg_info_array[2];
+        
+        return $r;
+    }
+        
+    public function kt_notifications_send($uid, $to_ids, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $subtype3=null)
     {
         if(is_array($to_ids)){
             $to_ids_arg = join(",",$to_ids);
@@ -807,19 +1012,21 @@ class Analytics_Utils
         if(isset($subtype2))
             $arg_array['st2'] = $subtype2;
 
-        
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+            
         $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
                                              'nts',
                                              $arg_array);
     }
 
-    public function kt_annoucements_send($to_ids, $uuid, $template_id, $subtype1=null, $subtype2=null)
+    public function kt_annoucements_send($to_ids, $uuid, $template_id, $subtype1=null, $subtype2=null, $subtype3=null)
     {
-        $this->kt_notifications_send(0, $to_ids, $uuid, $template_id, $subtype1, $subtype2);
+        $this->kt_notifications_send(0, $to_ids, $uuid, $template_id, $subtype1, $subtype2, $subtype3);
     }
     
-    public function kt_email_send($uid, $to_ids, $uuid, $template_id, $subtype1=null, $subtype2=null)
+    public function kt_email_send($uid, $to_ids, $uuid, $template_id, $subtype1=null, $subtype2=null, $subtype3=null)
     {
         if(is_array($to_ids)){
             $to_ids_arg = join(",",$to_ids);
@@ -841,12 +1048,16 @@ class Analytics_Utils
         if(isset($subtype2))
             $arg_array['st2'] = $subtype2;
         
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+
         $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
                                              'nes',
                                              $arg_array);
     }
 
+    
     public function kt_templatized_feed_send($uid, $template_id, $subtype1=null, $subtype2=null)
     {
         $arg_array = array('pt' => 3,
@@ -868,7 +1079,7 @@ class Analytics_Utils
     }
 
     // $bundle_template_id : from registerTemplateBundle.
-    public function kt_user_action_feed_send($uid, $bundle_template_id, $subtype1=null, $subtype2=null)
+    public function kt_user_action_feed_send($uid, $bundle_template_id, $subtype1=null, $subtype2=null, $subtype3=null)
     {
         $arg_array = array('pt' => 4,
                            's' => $uid);
@@ -882,6 +1093,9 @@ class Analytics_Utils
         if(isset($subtype2))
             $arg_array['st2'] = $subtype2;
         
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+            
         $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
                                              'fdp',
@@ -892,7 +1106,7 @@ class Analytics_Utils
     {
         $has_direction = isset($_GET['d']);
         $uid = $this->get_fb_param('user');
-       
+
         if($has_direction && $_GET['d'] == self::directed_val)
         {
             $this->an_app_added_directed($uid, $_GET['ut']);
@@ -900,6 +1114,16 @@ class Analytics_Utils
         else if($has_direction && $_GET['d'] == self::undirected_val)
         {
             $this->an_app_added_undirected($uid, $_GET['sut']);
+        }
+        else if(!empty($_COOKIE[$this->gen_ut_cookie_key()]))
+        {
+            $this->an_app_added_directed($uid, $_COOKIE[$this->gen_ut_cookie_key()]);
+            setcookie($this->gen_ut_cookie_key(), "", time()-600); //remove cookie
+        }
+        else if(!empty($_COOKIE[$this->gen_sut_cookie_key()]))
+        {
+            $this->an_app_added_undirected($uid, $_COOKIE[$this->gen_sut_cookie_key()]);
+            setcookie($this->gen_sut_cookie_key(), "", time()-600); //remove cookie
         }
         else
         {
@@ -954,10 +1178,13 @@ class Analytics_Utils
         $subtype2 = null;
         if(isset($_GET['kt_st2']))
             $subtype2 = $_GET['kt_st2'];
-
+        $subtype3 = null;
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        
         $uid = $this->get_fb_param('user');
         
-        $this->an_notification_click($added, $ut, $template_id, $subtype1, $subtype2, $uid);
+        $this->an_notification_click($added, $ut, $template_id, $subtype1, $subtype2, $subtype3, $uid);
         return $this->get_stripped_kt_args_url();
     }
     
@@ -974,10 +1201,13 @@ class Analytics_Utils
         $subtype2 = null;
         if(isset($_GET['kt_st2']))
             $subtype2 = $_GET['kt_st2'];        
-        
+        $subtype3 = null;
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+            
         $uid = $this->get_fb_param('user');
         
-        $this->an_notification_email_click($added, $ut, $template_id, $subtype1, $subtype2, $uid);
+        $this->an_notification_email_click($added, $ut, $template_id, $subtype1, $subtype2, $subtype3, $uid);
         return $this->get_stripped_kt_args_url();
     }
     
@@ -992,14 +1222,17 @@ class Analytics_Utils
         $subtype2 = null;
         if(isset($_GET['kt_st2']))
             $subtype2 = $_GET['kt_st2'];        
-
+        $subtype3 = null;
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        
         if(isset($_POST['ids']))
             $recipient_arry = $_POST['ids'];
         else
             $recipient_arry = '';
-        
-        $this->an_invite_send($_GET['kt_uid'], $recipient_arry, $_GET['kt_ut'], $template_id, $subtype1, $subtype2);
-        //return $this->get_stripped_kt_args_url(null, $_POST['ids']);
+
+        $this->an_invite_send($_GET['kt_uid'], $recipient_arry, $_GET['kt_ut'], $template_id, $subtype1, $subtype2, $subtype3);
+        return $this->get_stripped_kt_args_url();
     }
 
     public function save_invite_click($added)
@@ -1020,11 +1253,15 @@ class Analytics_Utils
             $subtype2 = $_GET['kt_st2'];
         else
             $subtype2 = null;        
+
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        else
+            $subtype3 = null;
         
         $uid = $this->get_fb_param('user');
         
-        $this->an_invite_click($added, $ut, $template_id, $subtype1, $subtype2, $uid);        
-
+        $this->an_invite_click($added, $ut, $template_id, $subtype1, $subtype2, $subtype3, $uid); 
         return $this->get_stripped_kt_args_url();
     }
 
@@ -1050,8 +1287,13 @@ class Analytics_Utils
         else
             $subtype2 = null;        
 
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        else
+            $subtype3 = null;
+        
         $short_tag = $this->gen_short_uuid();
-        $this->an_app_undirected_comm_click($uid, $type, $template_id, $subtype1, $subtype2, $added, $short_tag);
+        $this->an_app_undirected_comm_click($uid, $type, $template_id, $subtype1, $subtype2, $subtype3, $added, $short_tag);
 
         return $this->get_stripped_kt_args_url($short_tag);
     }

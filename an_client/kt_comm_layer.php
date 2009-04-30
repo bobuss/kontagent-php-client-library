@@ -1,5 +1,5 @@
 <?php
-// Kontagent an_client lib version 0.2.16
+// Kontagent an_client lib version KONTAGENT_VERSION_NUMBER
 
 class Kt_Comm
 {
@@ -62,7 +62,7 @@ class Kt_Comm
    // $arg_assoc_array : an associative array of argument list. 
    public function api_call_method($kt_api_url, $version, $api_key, $secret_key, $api_func,
                                    $arg_assoc_array){
-
+       
        if($this->m_ip != "")
        {
            $socket = @stream_socket_client($this->m_ip, $errno, $errstr, 0.5, STREAM_CLIENT_CONNECT);
@@ -86,8 +86,8 @@ class Kt_Comm
    {
        $sig = '';
        // Get the current time stamp
-       //$arg_assoc_array['ts'] = date(DATE_ATOM);
-
+       $arg_assoc_array['ts'] = gmdate("M-d-YTH:i:s");
+       
        // This is to get rid of null parameters. in the assoc array
        parse_str(http_build_query($arg_assoc_array,'', '&'), $formatted_arg_assoc_array);
        

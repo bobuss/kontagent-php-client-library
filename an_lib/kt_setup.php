@@ -2,20 +2,52 @@
 
 array_shift($argv);
 
+$use_ab_testing = false;
+
 if( count($argv) == 0 )
 {
-    // Kontagent an_lib version 0.2.16
+    // Kontagent an_lib version KONTAGENT_VERSION_NUMBER
     $settings = parse_ini_file('kt_settings.ini');
 }
-else
+else if( count($argv) == 1 )
 {
-    $settings = parse_ini_file($argv[0]);
+    if ( $argv[0] == "-ab" )
+    {
+        $use_ab_testing = true;
+        $settings = parse_ini_file('kt_settings.ini');
+    }
+    else
+    {
+        $settings = parse_ini_file($argv[0]);
+        if( $settings == false )
+        {
+            print "Err: Failed to open $argv[0] or it's not a valid ini file\n";
+            exit(0);
+        }
+    }
+}
+else if( count($argv) == 2 )
+{
+    // assuming that the first argument has to be ab testing related.
+    if( $argv[0] == "-ab")
+    {
+        $use_ab_testing = true;
+        $settings = parse_ini_file('kt_settings.ini');
+    }
+    else
+    {
+        print "Err: Don't understand what to do with ". $argv[0];
+        exit(0);
+    }
+
+    $settings = parse_ini_file($argv[1]);
     if( $settings == false )
     {
         print "Err: Failed to open $argv[0] or it's not a valid ini file\n";
         exit(0);
     }
 }
+
 
 // include the facebook library
 $fb_lib_path = $settings['FB_LIB_FULL_PATH']."\n";
@@ -141,6 +173,9 @@ else {
 print '$auto_capture_user_info_at_install  = '. $auto_capture_user_info_at_install .";\n";
 fwrite($FH, '$auto_capture_user_info_at_install  = '. $auto_capture_user_info_at_install .";\n");
 
+
+
+
 //instantiation
 print '$kt_facebook = new Kt_Facebook($facebook_api_key, $facebook_secret_key,'."\n";
 fwrite($FH, '$kt_facebook = new Kt_Facebook($facebook_api_key, $facebook_secret_key,'."\n");
@@ -151,12 +186,25 @@ fwrite($FH, '                               $backend_host, $backend_port, $backe
 print '                               $canvas_url, $call_back_req_uri);'."\n";
 fwrite($FH, '                               $canvas_url, $call_back_req_uri);'."\n");
 
-print '$an = Analytics_Utils::instance($backend_api_key, $backend_secret_key,'."\n";
-fwrite($FH, '$an = Analytics_Utils::instance($backend_api_key, $backend_secret_key,'."\n");
-print '                                $backend_host, $backend_port, $backend_url,'."\n";
-fwrite($FH, '                                $backend_host, $backend_port, $backend_url,'."\n");
-print '                                $canvas_url, $call_back_req_uri);'."\n";
-fwrite($FH, '                                $canvas_url, $call_back_req_uri);'."\n");
+print '$an = $kt_facebook->api_client->m_an';
+fwrite($FH, '$an = $kt_facebook->api_client->m_an'.";\n");
+
+
+if($use_ab_testing)
+{
+    $ab_testing_host = 'http://www.kontagent.com';
+    $ab_testing_port = '80';
+    print '$ab_testing_host = \'' . $ab_testing_host . '\';'."\n";
+    fwrite($FH, '$ab_testing_host = \'' . $ab_testing_host . '\';'."\n");
+    print '$ab_testing_port = ' . $ab_testing_port . ';'."\n";
+    fwrite($FH, '$ab_testing_port = ' . $ab_testing_port . ';'."\n");
+
+    print 'include_once AN_CLIENT.\'/kt_ab_testing.php\';'."\n";
+    fwrite($FH, 'include_once AN_CLIENT.\'/kt_ab_testing.php\';'."\n");
+
+    print '$kt_facebook->api_client->user_ab_test($ab_testing_host, $ab_testing_port);'."\n";
+    fwrite($FH, '$kt_facebook->api_client->user_ab_test($ab_testing_host, $ab_testing_port);'."\n");
+}
 
 fwrite($FH, "?>\n");
 fclose($FH);
@@ -184,7 +232,7 @@ if($sock)
     }
 
     fclose($sock);
-    if($result == "OK")
+    if(trim($result) == "OK")
     {
         print "\tPASSED\n";
     }
