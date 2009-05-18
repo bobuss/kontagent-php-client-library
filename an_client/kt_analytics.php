@@ -848,7 +848,7 @@ class Analytics_Utils
         else
         {
             $msg_info_array = $this->m_invite_message_info;
-            $this->m_invite_message_info = null;
+            //$this->m_invite_message_info = null;
         }
         
         $param_array = array();        
@@ -861,7 +861,7 @@ class Analytics_Utils
         else
         {
             $uuid = $this->m_invite_uuid;
-            $this->m_invite_uuid = 0;
+            //$this->m_invite_uuid = 0;
         }
             
         $param_array['kt_ut'] = $uuid;
@@ -881,7 +881,8 @@ class Analytics_Utils
         $r['url']=$this->append_kt_query_str($invite_post_link, http_build_query($param_array,'', '&'));
         $r['message_id'] = $msg_info_array[0];
         $r['message'] = $msg_info_array[2];
-        
+        $r['subject'] = $msg_info_array[3];
+        $r['button'] = $msg_info_array[4];
         return $r;
     }
     
@@ -899,7 +900,7 @@ class Analytics_Utils
         else
         {
             $uuid = $this->m_invite_uuid;
-            $this->m_invite_uuid = 0;
+            //$this->m_invite_uuid = 0; 
         }
             
         $param_array['kt_ut'] = $uuid;
@@ -928,7 +929,7 @@ class Analytics_Utils
         else
         {
             $uuid = $this->m_invite_uuid;
-            $this->m_invite_uuid = 0;
+            //$this->m_invite_uuid = 0;
         }
         
         $param_array['kt_d'] = Analytics_Utils::directed_val;
@@ -955,7 +956,7 @@ class Analytics_Utils
         else
         {
             $msg_info_array = $this->m_invite_message_info;
-            $this->m_invite_message_info = null;
+            //$this->m_invite_message_info = null;
         }
 
         if ($this->m_invite_uuid == 0)
@@ -966,7 +967,7 @@ class Analytics_Utils
         else
         {
             $uuid = $this->m_invite_uuid;
-            $this->m_invite_uuid = 0;
+            //$this->m_invite_uuid = 0;
         }
         
         $param_array['kt_uid'] = $this->get_fb_param('user');
@@ -989,7 +990,18 @@ class Analytics_Utils
         
         return $r;
     }
-        
+
+    public function kt_clear_invite_tag()
+    {
+        $this->m_invite_uuid = 0;
+    }
+
+    public function kt_clear_invite_tag_vo()
+    {
+        $this->m_invite_uuid = 0;
+        $this->m_invite_message_info = null;
+    }
+    
     public function kt_notifications_send($uid, $to_ids, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $subtype3=null)
     {
         if(is_array($to_ids)){

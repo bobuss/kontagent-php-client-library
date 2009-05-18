@@ -44,7 +44,7 @@ class AB_Testing_Manager
         {
             $url_str = $url_str."?f=1";
         }
-        
+
         $sock = fopen( $url_str , 'r' );
         $r = null;
         
@@ -147,6 +147,7 @@ class AB_Testing_Manager
                 $dict = unserialize($serialized_campaign_str);
             }
         }
+        $dict = $this->fetch_ab_testing_data($campaign, true); // force it//xxx
         return $dict;
     }
         
