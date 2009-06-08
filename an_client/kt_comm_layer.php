@@ -21,18 +21,21 @@ class Kt_Comm
    private function fetch_ip($port){
        // First try all servers in geographically-closest datacenter
        $ip_list = gethostbynamel($this->m_host);
-       shuffle($ip_list);
        $selected_ip = "";
-       foreach ($ip_list as $ip) {
-           $socket = stream_socket_client($ip.":".$port, $errno, $errstr, 0.5, STREAM_CLIENT_CONNECT);
-           if($socket)
-           {
-               fclose($socket);           
-               $selected_ip = $ip;
-               break;
-           }
-       }// for
-       
+
+       if($ip_list != false)
+       {
+           shuffle($ip_list);
+           foreach ($ip_list as $ip) {
+               $socket = stream_socket_client($ip.":".$port, $errno, $errstr, 0.5, STREAM_CLIENT_CONNECT);
+               if($socket)
+               {
+                   fclose($socket);           
+                   $selected_ip = $ip;
+                   break;
+               }
+           }// for
+       }
 
        // Looks like entire datacenter is down, so try our luck with one of global IPs.
        if($selected_ip == "")
@@ -106,5 +109,7 @@ class Kt_Comm
        return $url_path;
    }
 }
- 
+
+$kt_comm = new Kt_Comm("api.geo.kontagent.net", 80);
+
 ?>

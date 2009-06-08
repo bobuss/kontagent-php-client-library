@@ -823,9 +823,18 @@ class Analytics_Utils
         }
     }
     
+    // assumption : st1_str is set to the campaign_name
     public function format_kt_st1($st1_str)
     {
-        return "aB_".$st1_str;
+        $handle_index = $this->m_ab_testing_mgr->get_ab_testing_campaign_handle_index($st1_str);
+        if( $handle_index > 0 )
+        {
+            return "aB_".$st1_str."___".(string)$handle_index;
+        }
+        else
+        {
+            return "aB_".$st1_str;
+        }
     }
 
     public function format_kt_st2($st2_str)
@@ -881,8 +890,7 @@ class Analytics_Utils
         $r['url']=$this->append_kt_query_str($invite_post_link, http_build_query($param_array,'', '&'));
         $r['message_id'] = $msg_info_array[0];
         $r['message'] = $msg_info_array[2];
-        $r['subject'] = $msg_info_array[3];
-        $r['button'] = $msg_info_array[4];
+        $r['button'] = $msg_info_array[3];
         return $r;
     }
     

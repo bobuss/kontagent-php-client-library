@@ -151,6 +151,13 @@ class AB_Testing_Manager
         return $dict;
     }
         
+    //TODO
+    public function get_ab_testing_campaign_handle_index($campaign)
+    {
+        $json_obj = $dict['json'];
+        return $json_obj->handle_index;
+    }
+    
     public function get_ab_testing_message($campaign)
     {
         $dict = $this->get_ab_helper($campaign);

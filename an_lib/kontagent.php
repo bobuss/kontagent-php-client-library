@@ -40,8 +40,9 @@ if(! (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_RE
             $an->kt_capture_user_data($uid, $kt_user_info);
             setcookie($kt_key, 1, time()+1209600); //two weeks
         }
-    }
 
+    }
+    
 //if( (isset($_POST['fb_sig_in_new_facebook']) && $_POST['fb_sig_in_new_facebook'] == 1) )
     {
         if(isset($_GET["kt_type"]))
