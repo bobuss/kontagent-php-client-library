@@ -28,6 +28,7 @@ else if( count($argv) == 1 )
 }
 else if( count($argv) == 2 )
 {
+    // php -f kt_setup.php -- -ab <ini_file_name>
     // assuming that the first argument has to be ab testing related.
     if( $argv[0] == "-ab")
     {

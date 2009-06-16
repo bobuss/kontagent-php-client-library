@@ -556,7 +556,22 @@ class Analytics_Utils
                                                   'su'=>$short_tag));
    }
 
-   private function an_goal_count_increment($uid, $goal_counts){
+    private function an_monetization_increment($uid, $dollar){
+        $param_array = array();
+        foreach ($goal_counts as $key => $value)
+            $param_array['mon__'.$key] = $value;
+        if(is_array($uid))
+            $param_array['s'] = join(',',$uid);
+        else
+            $param_array['s'] = $uid;
+
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "mon",
+                                             $param_array);
+    }
+    
+    private function an_goal_count_increment($uid, $goal_counts){
        $param_array = array();
        foreach ($goal_counts as $key => $value)
            $param_array['gc'.$key] = $value;
@@ -619,7 +634,7 @@ class Analytics_Utils
        if($short_tag != null)
        {
            $param_array['sut'] = $short_tag;
-           setcookie($this->gen_sut_cookie_key(), $val, time()+600);
+           setcookie($this->gen_sut_cookie_key(), $short_tag, time()+600);
        }
 
        if($ids_array != null)
@@ -823,6 +838,22 @@ class Analytics_Utils
         }
     }
     
+    // for the new feed form
+    // it wraps individual links
+    public function gen_feed_stream_link($link, $template_id, $subtype1, $subtype2, $subtype3)
+    {
+        $this->m_template_bundle_id_tmp = $template_id;
+        $this->m_st1_tmp = $subtype1;
+        $this->m_st2_tmp = $subtype2;
+        $this->m_st3_tmp = $subtype3;
+
+        
+        $new_value = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
+                                           array($this, 'replace_kt_comm_link_helper_undirected'),
+                                           $link);
+        return $new_value;
+    }
+
     // assumption : st1_str is set to the campaign_name
     public function format_kt_st1($st1_str)
     {
@@ -1121,7 +1152,27 @@ class Analytics_Utils
                                              'fdp',
                                              $arg_array);
     }
-    
+
+    public function kt_feed_stream_send($uid, $template_id, $subtype1=null, $subtype2=null, $subtype3=null)
+    {
+        $arg_array = array('pt' => 5,
+                           's'=> $uid);
+        if(isset($bundle_template_id))
+            $arg_array['t'] = $bundle_template_id;
+
+        if(isset($subtype1))
+            $arg_array['st1'] = $subtype1;
+        if(isset($subtype2))
+            $arg_array['st2'] = $subtype2;
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+
+        $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
+                                             $this->m_backend_secret_key, $this->m_backend_secret_key,
+                                             'fdp',
+                                             $arg_array);
+    }
+        
     public function save_app_added()
     {
         $has_direction = isset($_GET['d']);
@@ -1356,6 +1407,8 @@ class Analytics_Utils
         $this->an_goal_count_increment($uid, $goal_counts);
     }
 
+    
+    
     // Should use cookie to avoid sending repeated information to kontagent.
     // Example:
     // $key = $an->$m_backend_api_key."_".$uid;
