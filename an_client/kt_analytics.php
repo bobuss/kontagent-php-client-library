@@ -149,7 +149,7 @@ class Analytics_Utils
         return $this->m_backend_api_key."_ut";
     }
 
-    private function gen_sut_cookie_key(){
+    public function gen_sut_cookie_key(){
         return $this->m_backend_api_key."_sut";
     }
 
@@ -610,6 +610,13 @@ class Analytics_Utils
    // handle apps that don't force its users to install the apps immediately.
    private function get_stripped_kt_args_url($short_tag=null, $ids_array=null)
    {
+       include_once 'Log.php';#xxx
+       $logger = &Log::singleton(
+           'file',
+           '/home/dafreak/test.log',
+           //$log_file_path,
+           NULL,
+           $conf);//xxx
        $param_array = array();
        foreach($_GET as $arg => $val)
        {
@@ -635,6 +642,8 @@ class Analytics_Utils
        {
            $param_array['sut'] = $short_tag;
            setcookie($this->gen_sut_cookie_key(), $short_tag, time()+600);
+           $logger->log("set cookie sut: ".$_COOKIE[$this->gen_sut_cookie_key()]);//xxx
+           $logger->log("sut : ".$short_tag);//xxx
        }
 
        if($ids_array != null)
@@ -645,24 +654,6 @@ class Analytics_Utils
        return $this->build_stripped_url($param_array);
    }
 
-   public function prolong_ut_cookie_if_set()
-   {
-       if(!empty($_COOKIE[$this->gen_ut_cookie_key()]))
-       {
-           $val = $_COOKIE[$this->gen_ut_cookie_key()];
-           setcookie($this->gen_ut_cookie_key(), $val, time()+600); // 10 minutes
-       }       
-   }
-
-   public function prolong_sut_cookie_if_set()
-   {
-       if(!empty($_COOKIE[$this->gen_sut_cookie_key()]))
-       {
-           $val = $_COOKIE[$this->gen_sut_cookie_key()];
-           setcookie($this->gen_sut_cookie_key(), $val, time()+600); // 10 minutes
-       }       
-   }
-   
    private function build_stripped_url($param_array)
    {
        // get the script name only minus the call_back_uri
@@ -1178,6 +1169,7 @@ class Analytics_Utils
         $has_direction = isset($_GET['d']);
         $uid = $this->get_fb_param('user');
 
+        /*
         if($has_direction && $_GET['d'] == self::directed_val)
         {
             $this->an_app_added_directed($uid, $_GET['ut']);
@@ -1186,16 +1178,30 @@ class Analytics_Utils
         {
             $this->an_app_added_undirected($uid, $_GET['sut']);
         }
-        else if(!empty($_COOKIE[$this->gen_ut_cookie_key()]))
+        */
+        if(!empty($_COOKIE[$this->gen_ut_cookie_key()]))
         {
             $this->an_app_added_directed($uid, $_COOKIE[$this->gen_ut_cookie_key()]);
             setcookie($this->gen_ut_cookie_key(), "", time()-600); //remove cookie
         }
         else if(!empty($_COOKIE[$this->gen_sut_cookie_key()]))
         {
+            include_once 'Log.php';#xxx
+            $logger = &Log::singleton(
+                'file',
+                '/home/dafreak/test.log',
+                //$log_file_path,
+                NULL,
+                NULL);//xxx            
+            $logger->log("apa: sut: ".$_COOKIE[$this->gen_sut_cookie_key()]); //xxx
             $this->an_app_added_undirected($uid, $_COOKIE[$this->gen_sut_cookie_key()]);
             setcookie($this->gen_sut_cookie_key(), "", time()-600); //remove cookie
         }
+        else
+        {
+            $this->an_app_added_nonviral($uid);
+        }
+        /*
         else
         {
             // If the app's settings on facebook has a specifed post-authorized redirect URL,
@@ -1233,7 +1239,7 @@ class Analytics_Utils
             {
                 $this->an_app_added_nonviral($uid);
             }
-        }
+            }*/
     }
     
     public function save_notification_click($added)

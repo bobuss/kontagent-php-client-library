@@ -107,8 +107,8 @@ class Kt_FacebookRestClient extends FacebookRestClient
         $uuid = $this->m_an->gen_email_link($fbml, $template_id, $st1, $st2);
         
         $r = parent::notifications_sendEmail($recipients, $subject, $text, $fbml);
-        
-        if($r != null)
+
+        if(!empty($r))
             $this->m_an->kt_email_send($this->m_an->get_fb_param('user'), $recipients, $uuid, $template_id, $st1, $st2);
         return $r;
     }
