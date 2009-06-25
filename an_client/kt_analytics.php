@@ -610,13 +610,6 @@ class Analytics_Utils
    // handle apps that don't force its users to install the apps immediately.
    private function get_stripped_kt_args_url($short_tag=null, $ids_array=null)
    {
-       include_once 'Log.php';#xxx
-       $logger = &Log::singleton(
-           'file',
-           '/home/dafreak/test.log',
-           //$log_file_path,
-           NULL,
-           $conf);//xxx
        $param_array = array();
        foreach($_GET as $arg => $val)
        {
@@ -642,8 +635,6 @@ class Analytics_Utils
        {
            $param_array['sut'] = $short_tag;
            setcookie($this->gen_sut_cookie_key(), $short_tag, time()+600);
-           $logger->log("set cookie sut: ".$_COOKIE[$this->gen_sut_cookie_key()]);//xxx
-           $logger->log("sut : ".$short_tag);//xxx
        }
 
        if($ids_array != null)
@@ -1186,14 +1177,6 @@ class Analytics_Utils
         }
         else if(!empty($_COOKIE[$this->gen_sut_cookie_key()]))
         {
-            include_once 'Log.php';#xxx
-            $logger = &Log::singleton(
-                'file',
-                '/home/dafreak/test.log',
-                //$log_file_path,
-                NULL,
-                NULL);//xxx            
-            $logger->log("apa: sut: ".$_COOKIE[$this->gen_sut_cookie_key()]); //xxx
             $this->an_app_added_undirected($uid, $_COOKIE[$this->gen_sut_cookie_key()]);
             setcookie($this->gen_sut_cookie_key(), "", time()-600); //remove cookie
         }
