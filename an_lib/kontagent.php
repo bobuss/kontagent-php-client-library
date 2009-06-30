@@ -30,25 +30,13 @@ if(! (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_RE
     {
         $kt_key = "KT_".$kt_facebook->api_key."_".$kt_user;
         
-//        if( empty($_COOKIE[$kt_key]) || (($auto_capture_user_info_at_install == true) && ($kt_installed == true) ) )
+        if( empty($_COOKIE[$kt_key]) || (($auto_capture_user_info_at_install == true) && ($kt_installed == true) ) )
         {
             $uid = $an->get_fb_param('user');
-            
-            $fetch = array('interests' =>
-                           array('pattern' => "\/invite2.php",
-                                 'query' => 'SELECT name FROM user WHERE uid="'.$kt_user.'"'));
-            echo(json_encode($fetch));
-            $kt_facebook->api_client->admin_setAppProperties(array('preload_fql' => json_encode($fetch)));
-            $res = $kt_facebook->api_client->admin_getAppProperties(array('preload_fql'));
-            var_dump($res);
-            
-            //var_dump(json_decode($_POST['fb_sig_active_user_info']));
-
             $kt_user_info = $kt_facebook->get_user_info($uid);
             $an->kt_capture_user_data($uid, $kt_user_info);
             setcookie($kt_key, 1, time()+1209600); //two weeks
         }
-
     }
     
 //if( (isset($_POST['fb_sig_in_new_facebook']) && $_POST['fb_sig_in_new_facebook'] == 1) )

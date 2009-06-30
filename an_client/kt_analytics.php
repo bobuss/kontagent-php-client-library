@@ -471,7 +471,7 @@ class Analytics_Utils
 
     private function an_app_added_nonviral($uid){
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1", $this->m_backend_api_key,
-                                             $this->m_backend_api_key,
+                                             $this->m_backend_secret_key,
                                              "apa",
                                              array('s'=>$uid));
     }

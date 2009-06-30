@@ -110,6 +110,6 @@ class Kt_Comm
    }
 }
 
-$kt_comm = new Kt_Comm("api.geo.kontagent.net", 80);
+//$kt_comm = new Kt_Comm("api.geo.kontagent.net", 80);
 
 ?>
