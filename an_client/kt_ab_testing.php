@@ -59,38 +59,60 @@ class AB_Testing_Manager
 
             if( $json_obj->changed )
             {
-                // process message list
-                $msg_lst = $json_obj->messages;
-                $msg_weight_array = array();
-                $curr_idx = 0;
-                foreach($msg_lst as $msg)
+                if(isset($json_obj->page_and_messages))
                 {
-                    $weight = $msg[1];
-                    for($i = 0; $i< $weight; $i++)
+                    // process mesage and page "together" for feed related campaigns
+                    $page_msg_lst = $json_obj->page_and_messages;
+                    $weight_array = array();
+                    $curr_idx = 0;
+                    foreach($page_msg_lst as $pm)
                     {
-                        $msg_weight_array[] = $curr_idx;
+                        $weight = $pm[1];
+                        for($i = 0; $i< $weight; $i++)
+                        {
+                            $weight_array[] = $curr_idx;
+                        }
+                        $curr_idx++;
                     }
-                    $curr_idx++;
+                    $store_dict = array();
+                    $store_dict['json'] = $json_obj;
+                    $store_dict['weight'] = $weight_array;
                 }
-                // process page list
-                $page_lst = $json_obj->pages;
-            
-                $page_weight_array = array();
-                $curr_idx = 0;
-                foreach($page_lst as $page)
+                else
                 {
-                    $weight = $page[1];
-                    for($i=0; $i<$weight; $i++)
+                    // process message list
+                    $msg_lst = $json_obj->messages;
+                    $msg_weight_array = array();
+                    $curr_idx = 0;
+                    foreach($msg_lst as $msg)
                     {
-                        $page_weight_array[] = $curr_idx;
+                        $weight = $msg[1];
+                        for($i = 0; $i< $weight; $i++)
+                        {
+                            $msg_weight_array[] = $curr_idx;
+                        }
+                        $curr_idx++;
                     }
-                    $curr_idx++;
-                }
-                $store_dict = array();
-                $store_dict['json'] = $json_obj;
-                $store_dict['msg_weight'] = $msg_weight_array;
-                $store_dict['page_weight'] = $page_weight_array;
+                    // process page list
+                    $page_lst = $json_obj->pages;
             
+                    $page_weight_array = array();
+                    $curr_idx = 0;
+                    foreach($page_lst as $page)
+                    {
+                        $weight = $page[1];
+                        for($i=0; $i<$weight; $i++)
+                        {
+                            $page_weight_array[] = $curr_idx;
+                        }
+                        $curr_idx++;
+                    }
+                    $store_dict = array();
+                    $store_dict['json'] = $json_obj;
+                    $store_dict['msg_weight'] = $msg_weight_array;
+                    $store_dict['page_weight'] = $page_weight_array;
+                }
+
                 $r = $store_dict;                
                 $this->m_memcached_server->set($this->gen_memcache_key($campaign) , serialize($store_dict), MEMCACHE_COMPRESSED, 0);
                 $this->m_memcached_server->set($this->gen_memcache_fake_key($campaign), 1, MEMCACHE_COMPRESSED, 300); // 5 mins
@@ -151,7 +173,6 @@ class AB_Testing_Manager
         return $dict;
     }
         
-    //TODO
     public function get_ab_testing_campaign_handle_index($campaign)
     {
         $dict = $this->get_ab_helper($campaign);
@@ -169,10 +190,8 @@ class AB_Testing_Manager
         else{
             $json_obj = $dict['json'];
             $msg_lst = $json_obj->messages;
-
             $weight_array = $dict['msg_weight'];
             $index = $weight_array[rand(0, count($weight_array)-1)];
-
             return $msg_lst[$index];
         }
     }
@@ -188,14 +207,48 @@ class AB_Testing_Manager
         {
             $json_obj = $dict['json'];
             $page_lst = $json_obj->pages;
-            
             $weight_array = $dict['page_weight'];
             $index = $weight_array[rand(0, count($weight_array)-1)];
-            
             return $page_lst[$index];
         }
     }
 
+    // used by feeds related calls
+    public function get_ab_testing_page_msg_tuple($campaign)
+    {
+        $dict = $this->get_ab_helper($campaign);
+        if($dict == null)
+        {
+            return null;
+        }
+        else
+        {
+            $json_obj = $dict['json'];
+            $page_msg_lst = $json_obj->page_and_messages;
+            $weight_array = $dict['weight'];
+            $index = $weight_array[rand(0, count($weight_array)-1)];
+            return $page_msg_lst[$index];
+        }
+    }
+        
+    public function are_page_message_coupled($campaign)
+    {
+        $dict = $this->get_ab_helper($campaign);
+        if($dict == null)
+        {
+            return false;
+        }
+        else
+        {
+            $json_obj = $dict['json'];
+            if(isset($json_obj->page_and_messages))
+                return true;
+            else
+                return false;
+        }
+    }
+        
+    // used by notifications, invites, etc.
     public function cache_ab_testing_msg_and_page($campaign, $msg_info, $page_info)
     {
         $dict = array();
@@ -204,10 +257,22 @@ class AB_Testing_Manager
         $this->m_selected_msg_page_pair_dict[$campaign] = $dict;
     }
 
+    // used by feeds related calls
+    public function cache_ab_testing_msg_page_tuple($campaign, $page_msg_info)
+    {
+        $dict = array();
+        $dict['page_msg'] = $page_msg_info;
+        $this->m_selected_msg_page_pair_dict[$campaign] = $dict;
+    }
+    
+    public function get_selected_page_msg_info($campaign)
+    {
+        return $this->m_selected_msg_page_pair_dict[$campaign]['page_msg'];
+    }
+    
     public function get_selected_msg_info($campaign)
     {
         return  $this->m_selected_msg_page_pair_dict[$campaign]['msg'];
-
     }
 
     public function get_selected_page_info($campaign)
@@ -217,9 +282,20 @@ class AB_Testing_Manager
 }
 
 //testing code
-//$ab_testing_mgr = new AB_Testing_Manager('ea04b006c8174440a264ab4ab5b1e4e0', '45237b3a91184c389a4c12f38e7fe755',
+//$ab_testing_mgr = new AB_Testing_Manager('0acd88e74d8d4f228f3e07a39e7f8b67', 'dadaf96551f1434ab98f0877fba19723',
 //                                         'http://kthq.dyndns.org', 9999);
-//$ab_testing_mgr->fetch_ab_testing_data('hello');
+
+////////// TEST CASE /////////////////
+//$page_msg_info =  $ab_testing_mgr->get_ab_testing_page_msg_tuple('feed_story');
+//$ab_testing_mgr->cache_ab_testing_msg_page_tuple('feed_story', $page_msg_info);
+//var_dump($ab_testing_mgr->get_selected_page_msg_info('feed_story'));
+////////// END: TEST CASE /////////////////
+
+//print $ab_testing_mgr->are_page_message_coupled('feed_story');
+//print $ab_testing_mgr->are_page_message_coupled('notif');
+
+
+
 //echo $ab_testing_mgr->get_message('hello')."\n";
 
 //echo $ab_testing_mgr->get_page($campaign)."\n";

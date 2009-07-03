@@ -104,16 +104,33 @@ if(! (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_RE
 function set_ab_testing_page($campaign)
 {
     global $kt_facebook;
-    $page_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_page($campaign);
-    $msg_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_message($campaign);
-    $kt_facebook->api_client->m_an->m_ab_testing_mgr->cache_ab_testing_msg_and_page($campaign, $msg_info, $page_info);
+    if($kt_facebook->api_client->m_an->m_ab_testing_mgr->are_page_message_coupled($campaign))
+    {
+        $page_msg_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_page_msg_tuple($campaign);
+        $kt_facebook->api_client->m_an->m_ab_testing_mgr->cache_ab_testing_msg_page_tuple($campaign, $page_msg_info);
+    }
+    else
+    {
+        $page_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_page($campaign);
+        $msg_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_message($campaign);
+        $kt_facebook->api_client->m_an->m_ab_testing_mgr->cache_ab_testing_msg_and_page($campaign, $msg_info, $page_info);
+    }
 }
 
 function get_page_text($campaign)
 {
     global $kt_facebook;
-    $page_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_selected_page_info($campaign);
-    return $page_info[2];
+    if($kt_facebook->api_client->m_an->m_ab_testing_mgr->are_page_message_coupled($campaign))
+    {
+        $page_msg_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_selected_page_msg_info($campaign);
+        return $page_msg_info[2];
+    }
+    else
+    {
+        $page_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_selected_page_info($campaign);
+        return $page_info[2];
+    }
 }
+
 ?>
 

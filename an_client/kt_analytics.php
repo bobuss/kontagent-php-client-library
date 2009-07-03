@@ -543,31 +543,30 @@ class Analytics_Utils
    }
 
     private function an_app_undirected_comm_click($uid, $type, $template_id, $subtype1, $subtype2, $subtype3, $has_added, $short_tag){
-       $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
-                                            $this->m_backend_api_key, $this->m_backend_secret_key,
-                                            "ucc",
-                                            array('s'=>$uid,
-                                                  'tu'=>$type,
-                                                  't'=>$template_id,
-                                                  'st1'=>$subtype1,
-                                                  'st2'=>$subtype2,
-                                                  'st3'=>$subtype3,
-                                                  'i'=>$has_added,
-                                                  'su'=>$short_tag));
-   }
-
-    private function an_monetization_increment($uid, $dollar){
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "ucc",
+                                             array('s'=>$uid,
+                                                   'tu'=>$type,
+                                                   't'=>$template_id,
+                                                   'st1'=>$subtype1,
+                                                   'st2'=>$subtype2,
+                                                   'st3'=>$subtype3,
+                                                   'i'=>$has_added,
+                                                   'su'=>$short_tag));
+    }
+    
+    private function an_monetization_increment($uid, $money_value){
         $param_array = array();
-        foreach ($goal_counts as $key => $value)
-            $param_array['mon__'.$key] = $value;
         if(is_array($uid))
             $param_array['s'] = join(',',$uid);
         else
             $param_array['s'] = $uid;
-
+        $param_array['v'] = $money_value;
+        
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
-                                             "mon",
+                                             "mtu",
                                              $param_array);
     }
     
@@ -1389,14 +1388,17 @@ class Analytics_Utils
     {
         $this->an_goal_count_increment($uid, array($goal_id => $inc));
     }
-
-
+    
+    // $goal_count : array($goal_id => $inc);
     public function increment_multiple_goal_counts($uid, $goal_counts)
     {
         $this->an_goal_count_increment($uid, $goal_counts);
     }
 
-    
+    public function increment_monetization($uid, $money_value)
+    {
+        $this->an_monetization_increment($uid, $money_value);
+    }
     
     // Should use cookie to avoid sending repeated information to kontagent.
     // Example:
