@@ -51,7 +51,7 @@ class Kt_FacebookRestClient extends FacebookRestClient
         
         $r = parent::notifications_send($to_ids, $notification, $type);
         
-        if($r != null)
+        if(!empty($r))
         {
             if($type == 'app_to_user')
                 $this->m_an->kt_annoucements_send($to_ids, $uuid, $template_id, $st1, $st2);
@@ -84,7 +84,7 @@ class Kt_FacebookRestClient extends FacebookRestClient
 
         $r = parent::notifications_send($to_ids, $notification, $type);
         
-        if($r != null)
+        if(!empty($r))
         {
             if($type == 'app_to_user')
                 $this->m_an->kt_annoucements_send($to_ids, $uuid, null, $st1, $st2, $st3);
@@ -128,7 +128,7 @@ class Kt_FacebookRestClient extends FacebookRestClient
         $uuid = $this->m_an->gen_email_link_vo($fbml, $msg_text, $st1, $st2, $st3);
         
         $r = parent::notifications_sendEmail($recipients, $subject, $text, $fbml);
-        if($r != null)
+        if(!empty($r))
             $this->m_an->kt_email_send($this->m_an->get_fb_param('user'), $recipients, $uuid, null, $st1, $st2, $st3);
         return $r;
     }
@@ -152,7 +152,7 @@ class Kt_FacebookRestClient extends FacebookRestClient
                                                    $body_template,
                                                    $body_data,
                                                    $body_general);
-        if($r != null)
+        if(!empty($r))
             $this->m_an->kt_templatized_feed_send($this->m_an->get_fb_param('user'), $template_id, $st1, $st2);
         
         return $r;
@@ -163,14 +163,13 @@ class Kt_FacebookRestClient extends FacebookRestClient
                                             $story_size = FacebookRestClient::STORY_SIZE_ONE_LINE,
                                             $st1=null, $st2=null)
     {
-        $this->m_an->gen_feed_publishUserAction($template_data,
-                                                $template_bundle_id,
-                                                $st1, $st2);
+        $uuid = $this->m_an->gen_feed_publishUserAction($template_data,
+                                                        $st1, $st2);
         
         $r = parent::feed_publishUserAction($template_bundle_id, $template_data, $target_ids, $body_general, $story_size);
-
-        if($r != null)
-            $this->m_an->kt_user_action_feed_send($this->m_an->get_fb_param('user'), $template_bundle_id, $st1, $st2);
+        
+        if(!empty($r))
+            $this->m_an->kt_user_action_feed_send($this->m_an->get_fb_param('user'), $uuid, $target_ids, $st1, $st2);
         
         return $r;
     }
@@ -191,14 +190,59 @@ class Kt_FacebookRestClient extends FacebookRestClient
         $st2 = $this->m_an->format_kt_st2($msg_id);
         $st3 = $this->m_an->format_kt_st3($page_info[0]);
         
-        $this->m_an->gen_feed_publishUserAction($template_data, $template_bundle_id, $st1, $st2, $st3, $msg_text);
+        $this->m_an->gen_feed_publishUserAction($template_data, $st1, $st2, $st3, $msg_text);
         $r = parent::feed_publishUserAction($template_bundle_id, $template_data, $target_ids, $body_general, $story_size);
 
-        if($r != null)
+        if(!empty($r))
             $this->m_an->kt_user_action_feed_send($this->m_an->get_fb_param('user'), $template_bundle_id, $st1, $st2, $st3);
         return $r;
     }
 
+    
+    function profile_setFBML($markup,
+                             $uid=null,
+                             $profile='',
+                             $profile_action='',
+                             $mobile_profile='',
+                             $profile_main='',
+                             $st1=null, $st2=null)
+    {
+        if($uid!=null)
+            $user_id = $uid;
+        else
+            $user_id = $this->m_an->get_fb_param('user');
+
+        $this->m_an->gen_profile_setFBML_link($profile, $st1=null, $st2=null, $user_id);
+        $this->m_an->gen_profile_setFBML_link($mobile_profile, $st1=null, $st2=null, $user_id);
+        $this->m_an->gen_profile_setFBML_link($profile_main, $st1=null, $st2=null, $user_id);
+
+        $r = parent::profile_setFBML($markup,
+                                     $uid,
+                                     $profile,
+                                     $profile_action,
+                                     $mobile_profile,
+                                     $profile_main);
+        
+        if(!empty($r))
+            $this->m_an->kt_profile_setFBML_send($user_id, $st1, $st2);
+        return $r;
+    }
+    
+    public function &profile_setInfo($title, $type, $info_fields, $uid=null, $st1=null, $st2=null)
+    {
+        if($uid!=null)
+            $user_id = $uid;
+        else
+            $user_id = $this->m_an->get_fb_param('user');
+
+        $this->m_an->gen_profile_setInfo($info_fields, $user_id, $st1, $st2);
+        
+        $r = parent::profile_setInfo($title, $type, $info_fields, $uid);
+        
+        if(!empty($r))
+            $this->m_an->kt_profile_setInfo_send($user_id, $st1, $st2);
+        return $r;
+    }
 }
 
 

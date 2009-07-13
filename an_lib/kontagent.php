@@ -70,12 +70,38 @@ if(! (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_RE
                 $kt_facebook->redirect($kt_url);
                 break;
             }
-            case "fdp":        
+            case "feedpub":
+            {
+                $kt_url = $an->save_feedpub_click($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
+            case "feedstory":
+            {
+                $kt_url = $an->save_feedstory_click($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
+            case "multifeedstory":
+            {
+                $kt_url = $an->save_multifeedstory_click($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
+            case "profilebox":
+            {
+                $kt_url = $an->save_profilebox_click($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
+            case "profileinfo":
+            {
+                $kt_url = $an->save_profileinfo_click($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
             case "ad":        
-            case "prt":        
-            case "prf":        
             case "partner":        
-            case "profile":        
             {
                 $kt_url = $an->save_undirected_comm_click($kt_is_added);
                 $kt_facebook->redirect($kt_url);
@@ -106,11 +132,13 @@ function set_ab_testing_page($campaign)
     global $kt_facebook;
     if($kt_facebook->api_client->m_an->m_ab_testing_mgr->are_page_message_coupled($campaign))
     {
+        echo "<p>pages and messages are coupled</p>";
         $page_msg_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_page_msg_tuple($campaign);
         $kt_facebook->api_client->m_an->m_ab_testing_mgr->cache_ab_testing_msg_page_tuple($campaign, $page_msg_info);
     }
     else
     {
+        echo "<p>pages and messages aren't coupled</p>";
         $page_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_page($campaign);
         $msg_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_message($campaign);
         $kt_facebook->api_client->m_an->m_ab_testing_mgr->cache_ab_testing_msg_and_page($campaign, $msg_info, $page_info);

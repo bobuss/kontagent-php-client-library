@@ -5,8 +5,11 @@ include_once 'kt_comm_layer.php';
 
 class Analytics_Utils
 {
-    private static $s_undirected_types = array('pr'=>'pr', 'fdp'=>'fdp', 'ad'=>'ad', 'ap'=>'ap');
-    private static $s_directed_types = array('in'=>'in', 'nt'=>'nt', 'nte'=>'nte');
+    private static $s_undirected_types = array('ad'=>'ad', 'ap'=>'ap');
+    private static $s_profile_types = array('profilebox'=>'profilebox',
+                                            'profileinfo'=>'profileinfo');
+    private static $s_directed_types = array('in'=>'in', 'nt'=>'nt', 'nte'=>'nte', 'feedpub'=>'feedpub',
+                                             'feedstory'=>'feedstory', 'multifeedstory'=>'multifeedstory');
 
     private static $s_kt_args = array('kt_uid'=>1,
                                       'kt_d'=>1,
@@ -15,7 +18,8 @@ class Analytics_Utils
                                       'kt_t'=>1,
                                       'kt_st1'=>1,
                                       'kt_st2'=>1,
-                                      'kt_st3'=>1);
+                                      'kt_st3'=>1,
+                                      'kt_owner_uid'=>1);
     
     private static $s_install_args = array('d'=>1,
                                            'ut'=>1,
@@ -25,6 +29,7 @@ class Analytics_Utils
 
     const directed_val = 'd';
     const undirected_val = 'u';    
+    const profile_val = 'p';    
     const URL_REGEX_STR_NO_HREF = '/https?:\/\/[^\s>\'"]+/';
     const URL_REGEX_STR = '/(href\s*=.*?)(https?:\/\/[^\s>\'"]+)/';
     const VO_PARAM_REGEX_STR = '/\{\*KT_AB_MSG\*\}/';
@@ -49,7 +54,7 @@ class Analytics_Utils
     private $m_st3_tmp;
     private $m_query_str_tmp;
     private $m_msg_text_tmp;
-    
+
     public $m_ab_testing_mgr;
     
     
@@ -108,6 +113,11 @@ class Analytics_Utils
         return false;
     }    
 
+    private function is_profile_type($type){
+        if (isset(self::$s_profile_types[$type]))
+            return true;
+        return false;
+    }
     
     // Invoke this function with the fb_sig_* but excludes the fb_sig_ prefix.
     // For example, for fb_sig_user, pass in "user" as the $param_name argument.
@@ -153,11 +163,13 @@ class Analytics_Utils
         return $this->m_backend_api_key."_sut";
     }
 
-    private function gen_kt_comm_query_str($comm_type, $template_id, $subtype1, $subtype2, $subtype3, &$ret_str){
+    // if $uuid is provided, then it doesn't generate a new one (directed comm)
+    private function gen_kt_comm_query_str($comm_type, $template_id, $subtype1, $subtype2, $subtype3, &$ret_str,
+                                           $uuid=null, $uid=null){
         $param_array = array();
         $dir_val;       
         $uuid = 0;
-       
+
         if($comm_type != null){
             if ($this->is_directed_type($comm_type)){
                 $dir_val = Analytics_Utils::directed_val;
@@ -165,21 +177,32 @@ class Analytics_Utils
             else if($this->is_undirected_type($comm_type)){
                 $dir_val = Analytics_Utils::undirected_val;
             }
-         
-            if($comm_type == 'pr'){ //profile
-                //$sender = $this->m_an->m_kt_facebook->require_login();
-                //$param_array['kt_uid'] = $sender;
+            else if($this->is_profile_type($comm_type)){
+                $dir_val = Analytics_Utils::profile_val;
             }
         }       
         
-        $param_array['kt_d'] = $dir_val;
+        //$param_array['kt_d'] = $dir_val; // deprecated
         $param_array['kt_type'] = $comm_type;
 
-        if($dir_val == Analytics_Utils::directed_val){
-            $uuid = $this->gen_long_uuid();
-            $param_array['kt_ut'] = $uuid;
+        if(isset($dir_val))
+        {
+            if($dir_val == Analytics_Utils::directed_val){
+                if(!isset($uuid) || $uuid == 0)
+                {
+                    $uuid = $this->gen_long_uuid();
+                }
+                $param_array['kt_ut'] = $uuid;
+            }
+            else if($dir_val == Analytics_Utils::profile_val){
+                if(!isset($uid))
+                {
+                    $uid = $this->get_fb_param('user');
+                }
+                $param_array['kt_owner_uid'] = $uid;
+            }
         }
-       
+            
         if($template_id != null){
             $param_array['kt_t'] = $template_id;
         }
@@ -228,6 +251,7 @@ class Analytics_Utils
         
     }
         
+    /*
     private function xmlentities ( $string )
     {
         $arry =  split('&', $string);
@@ -315,19 +339,23 @@ class Analytics_Utils
         }
        
         return $r_str;
-    }
+        }*/
 
     private function replace_kt_comm_link_helper_directed($matches)
     {
         return $matches[1].$this->append_kt_query_str($matches[2], $this->m_query_str_tmp);
     }
     
-    
+    // Deprecated
+    /*
     private function replace_kt_comm_link_helper_undirected($matches)
     {
         return $this->replace_kt_comm_link_helper_undirected_impl('fdp', $matches[0]);
     }
-
+    */
+    
+    // Deprecated
+    /*
     private function replace_kt_comm_link_helper_undirected_impl($kt_type, $input_str)
     {
         $query_str;
@@ -340,6 +368,31 @@ class Analytics_Utils
 
         return $this->append_kt_query_str($input_str, $query_str);
     }
+    */
+
+    // TODO: can I consolidate replace_kt_comm_link_helper_feedpub and replace_kt_comm_link_helper_feedstory?
+    private function replace_kt_comm_link_helper_feedpub($matches)
+    {
+        if(is_array($matches))
+            return $this->append_kt_query_str($matches[0], $this->m_query_str_tmp);
+        else if(is_string($matches))
+            return $this->append_kt_query_str($matches, $this->m_query_str_tmp);
+    }
+    private function replace_kt_comm_link_helper_feedstory($matches)
+    {
+        if(is_array($matches))
+            return $this->append_kt_query_str($matches[0], $this->m_query_str_tmp);
+        else if(is_string($matches))
+            return $this->append_kt_query_str($matches, $this->m_query_str_tmp);
+    }
+    private function replace_kt_comm_link_helper_multifeedstory($matches)
+    {
+        if(is_array($matches))
+            return $this->append_kt_query_str($matches[0], $this->m_query_str_tmp);
+        else if(is_string($matches))
+            return $this->append_kt_query_str($matches, $this->m_query_str_tmp);
+    }
+
     
     private function fill_message_with_ab_message($matches)
     {
@@ -541,6 +594,80 @@ class Analytics_Utils
                                                   'st2' => $subtype2,
                                                   'st3' => $subtype3));
    }
+
+    private function an_feedstory_click($has_been_added, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $subtype3=null, $recipient_uid = null)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "psr",
+                                             array('r' => $recipient_uid,
+                                                   'i' => $has_been_added,
+                                                   'u' => $uuid,
+                                                   'tu' => 'feedstory',
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3));
+    }
+    
+    private function an_multifeedstory_click($has_been_added, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $subtype3=null, $recipient_uid = null)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "psr",
+                                             array('r' => $recipient_uid,
+                                                   'i' => $has_been_added,
+                                                   'u' => $uuid,
+                                                   'tu' => 'multifeedstory',
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3));        
+    }
+
+    private function an_profilebox_click($added, $subtype1, $subtype2, $subtype3, $owner_uid, $clicker_uid)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "psr",
+                                             array('r' => $clicker_uid,
+                                                   's'  => $clicker_uid,
+                                                   'i' => $has_been_added,
+                                                   'tu' => 'profilebox',
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3
+                                                   ));
+    }
+
+    private function an_profileinfo_click($added, $subtype1, $subtype2, $subtype3, $owner_uid, $clicker_uid)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "psr",
+                                             array('r' => $clicker_uid,
+                                                   's'  => $clicker_uid,
+                                                   'i' => $has_been_added,
+                                                   'tu' => 'profileinfo',
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3
+                                                   ));
+    }
+    
+    
+    private function an_feedpub_click($has_been_added, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $subtype3=null, $recipient_uid = null)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "psr",
+                                             array('r' => $recipient_uid,
+                                                   'i' => $has_been_added,
+                                                   'u' => $uuid,
+                                                   'tu' => 'feedpub',
+                                                   't' => $template_id,
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3));
+    }
 
     private function an_app_undirected_comm_click($uid, $type, $template_id, $subtype1, $subtype2, $subtype3, $has_added, $short_tag){
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
@@ -749,22 +876,49 @@ class Analytics_Utils
         return $this->gen_kt_comm_link_vo($email_fbml, 'nte', $subtype1, $subtype2, $subtype3);
     }
         
-    public function gen_feed_link(&$template, $template_id = null, $subtype1 = null, $subtype2 = null)
+    public function gen_profile_setFBML_link(&$profile_fbml, $subtype1=null, $subtype2=null, $owner_id=null)
     {
-        return $this->gen_kt_comm_link($email_fbml, 'fdp', $template_id, $subtype1, $subtype2); 
+        $query_str;
+        $uuid = $this->gen_kt_comm_query_str('profilebox', null, $subtype1, $subtype2, null, $query_str, null, $owner_id);
+        $this->m_query_str_tmp = $query_str;
+
+        $profile_fbml = preg_replace_callback(self::URL_REGEX_STR,
+                                              array($this, 'replace_kt_comm_link_helper_directed'),
+                                              $profile_fbml);
+        return $uuid;
     }
 
+    public function gen_profile_setInfo(&$info_fields, $owner_id=null, $subtype1=null, $subtype2=null)
+    {
+        $query_str;
+        $uuid = $this->gen_kt_comm_query_str('profileinfo', null, $subtype1, $subtype2, null, $query_str, null, $owner_id);
+        //$this->m_query_str_tmp = $query_str;
+
+        for( $i=0 ;  $i < sizeof($info_fields); $i++)
+        {
+            $info_item = $info_fields[$i];
+            $items_arry = $info_item['items'];
+            for($j=0; $j < sizeof($items_arry); $j++)
+            {
+                $item = $items_arry[$j];
+                $link = $item['link'];
+                $info_fields[$i]['items'][$j]['link'] = $this->append_kt_query_str($link, $query_str);
+            }
+        }// foreach
+        return $uuid;
+    }
+    
+    // This is deprecated
     public function gen_feed_link_templatized_data(&$data, $template_id = null, $subtype1 = null, $subtype2 = null)
     {
         $this->gen_kt_comm_link_templatized_data($data, 'fdp', $template_id, $subtype1, $subtype2);
     }
 
     // $template_bundle_id: bundle_id from registerTemplateBundle.
-    public function gen_feed_publishUserAction(&$data, $template_bundle_id,
+    public function gen_feed_publishUserAction(&$data,
                                                $subtype1 = null, $subtype2 = null, $subtype3 = null,
                                                $msg_text = null)
     {
-        $this->m_template_bundle_id_tmp = $template_bundle_id;
         $this->m_st1_tmp = $subtype1;
         $this->m_st2_tmp = $subtype2;
         $this->m_st3_tmp = $subtype3;
@@ -774,6 +928,13 @@ class Analytics_Utils
         else
             $data_arry = json_decode($data, true);
         
+        $query_str;
+        $uuid =  $this->gen_kt_comm_query_str('feedpub', null, //template_id
+                                              $this->m_st1_tmp,
+                                              $this->m_st2_tmp,
+                                              $this->m_st3_tmp,
+                                              $query_str);
+        $this->m_query_str_tmp = $query_str;
         if($data_arry != null)
         {        
             foreach($data_arry as $key => $value)
@@ -786,7 +947,7 @@ class Analytics_Utils
                     $len = sizeof($value);
                     for($i = 0 ; $i < $len ; $i++)
                     {
-                        $value[$i]['href'] = $this->replace_kt_comm_link_helper_undirected_impl('fdp', $value[$i]['href']);
+                        $value[$i]['href'] = $this->replace_kt_comm_link_helper_feedpub($value[$i]['href']);
                     }
                     $data_arry[$key] = $value;
                 }
@@ -805,7 +966,7 @@ class Analytics_Utils
                 else
                 {
                     $new_value = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
-                                                       array($this, 'replace_kt_comm_link_helper_undirected'),
+                                                       array($this, 'replace_kt_comm_link_helper_feedpub'),
                                                        $value);
                     $data_arry[$key] = $new_value;
                 }                
@@ -817,24 +978,50 @@ class Analytics_Utils
             }
             $data = json_encode($data_arry);
         }
+        return $uuid;
     }
     
     // for the new feed form
     // it wraps individual links
-    public function gen_feed_stream_link($link, $template_id, $subtype1, $subtype2, $subtype3)
+    public function gen_feedstory_link($link, $uuid, $subtype1, $subtype2, $subtype3)
     {
-        $this->m_template_bundle_id_tmp = $template_id;
         $this->m_st1_tmp = $subtype1;
         $this->m_st2_tmp = $subtype2;
         $this->m_st3_tmp = $subtype3;
-
+        $query_str;
+        $uuid = $this->gen_kt_comm_query_str('feedstory', null,
+                                             $this->m_st1_tmp,
+                                             $this->m_st2_tmp,
+                                             $this->m_st3_tmp,
+                                             $query_str,
+                                             $uuid);
+        $this->m_query_str_tmp = $query_str;        
         
         $new_value = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
-                                           array($this, 'replace_kt_comm_link_helper_undirected'),
+                                           array($this, 'replace_kt_comm_link_helper_feedstory'),
                                            $link);
         return $new_value;
     }
 
+    public function gen_multifeedstory_link($link, $uuid, $subtype1, $subtype2, $subtype3)
+    {
+        $this->m_st1_tmp = $subtype1;
+        $this->m_st2_tmp = $subtype2;
+        $this->m_st3_tmp = $subtype3;
+        $query_str;
+        $uuid = $this->gen_kt_comm_query_str('multifeedstory', null,
+                                             $this->m_st1_tmp,
+                                             $this->m_st2_tmp,
+                                             $this->m_st3_tmp,
+                                             $query_str,
+                                             $uuid);
+        $this->m_query_str_tmp = $query_str;        
+        $new_value = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
+                                           array($this, 'replace_kt_comm_link_helper_feedstory'),
+                                           $link);
+        return $new_value;
+    }
+    
     // assumption : st1_str is set to the campaign_name
     public function format_kt_st1($st1_str)
     {
@@ -1111,13 +1298,14 @@ class Analytics_Utils
     }
 
     // $bundle_template_id : from registerTemplateBundle.
-    public function kt_user_action_feed_send($uid, $bundle_template_id, $subtype1=null, $subtype2=null, $subtype3=null)
+    public function kt_user_action_feed_send($uid, $uuid, $target_ids=null, $subtype1=null, $subtype2=null, $subtype3=null)
     {
-        $arg_array = array('pt' => 4,
-                           's' => $uid);
+        $arg_array = array('tu' => 'feedpub',
+                           's' => $uid,
+                           'u' => $uuid);
 
-        if(isset($bundle_template_id))
-            $arg_array['t'] = $bundle_template_id;
+        if(isset($target_ids))
+            $arg_array['tg'] = join(',', $target_ids);
 
         if(isset($subtype1))
             $arg_array['st1'] = $subtype1;
@@ -1130,17 +1318,15 @@ class Analytics_Utils
             
         $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
-                                             'fdp',
+                                             'pst',
                                              $arg_array);
     }
 
-    public function kt_feed_stream_send($uid, $template_id, $subtype1=null, $subtype2=null, $subtype3=null)
+    public function kt_feedstory_send($uid, $uuid, $subtype1=null, $subtype2=null, $subtype3=null)
     {
-        $arg_array = array('pt' => 5,
-                           's'=> $uid);
-        if(isset($bundle_template_id))
-            $arg_array['t'] = $bundle_template_id;
-
+        $arg_array = array('tu' => 'feedstory',
+                           's' => $uid,
+                           'u' => $uuid);
         if(isset($subtype1))
             $arg_array['st1'] = $subtype1;
         if(isset($subtype2))
@@ -1149,11 +1335,70 @@ class Analytics_Utils
             $arg_array['st3'] = $subtype3;
 
         $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
-                                             $this->m_backend_secret_key, $this->m_backend_secret_key,
-                                             'fdp',
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             'pst',
                                              $arg_array);
     }
+
+    public function kt_multifeedstory_send($uid, $uuid, $post_request)
+    {
+        // the recipent can be found either as ktuid or as friend_selector_id.
+        if(isset($post_request['friend_selector_id']))
+            $target_uid = $post_request['friend_selector_id'];
+        else if(isset($post_request['ktuid']))
+            $target_uid = $post_request['ktuid'];
         
+        $arg_array = array( 'tu' => 'multifeedstory',
+                            's' => $uid,
+                            'u' => $uuid,
+                            'tg' =>$target_uid );
+        if(isset($subtype1))
+            $arg_array['st1'] = $subtype1;
+        if(isset($subtype2))
+            $arg_array['st2'] = $subtype2;
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+
+        $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             'pst',
+                                             $arg_array);
+    }
+
+    public function kt_profile_setFBML_send($uid, $subtype1 = null, $subtype2 = null, $subtype3 = null)
+    {
+        $arg_array = array('tu' => 'profilebox',
+                           's' => $uid);
+        if(isset($subtype1))
+            $arg_array['st1'] = $subtype1;
+        if(isset($subtype2))
+            $arg_array['st2'] = $subtype2;
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+
+        $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             'pst',
+                                             $arg_array);
+    }
+
+    public function kt_profile_setInfo_send($uid, $subtype1 = null, $subtype2 = null, $subtype3 = null)
+    {
+        $arg_array = array('tu' => 'profileinfo',
+                           's' => $uid);
+        if(isset($subtype1))
+            $arg_array['st1'] = $subtype1;
+        if(isset($subtype2))
+            $arg_array['st2'] = $subtype2;
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+
+        $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             'pst',
+                                             $arg_array);
+    }
+    
     public function save_app_added()
     {
         $has_direction = isset($_GET['d']);
@@ -1357,6 +1602,134 @@ class Analytics_Utils
         return $this->get_stripped_kt_args_url($short_tag);
     }
 
+    public function save_feedpub_click($added)
+    {
+        $uid = $this->get_fb_param('user');
+        $ut = $_GET['kt_ut'];
+        
+        $template_id = null;
+
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        else
+            $subtype1 = null;
+
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        else
+            $subtype2 = null;
+
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        else
+            $subtype3 = null;
+        
+        $this->an_feedpub_click($added, $ut, $template_id, $subtype1, $subtype2, $subtype3, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+    
+    public function save_feedstory_click($added)
+    {
+        $uid = $this->get_fb_param('user');
+        $ut = $_GET['kt_ut'];
+
+        $template_id = null;
+                
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        else
+            $subtype1 = null;
+
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        else
+            $subtype2 = null;
+
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        else
+            $subtype3 = null;
+
+        $this->an_feedstory_click($added, $ut, $template_id, $subtype1, $subtype2, $subtype3, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+
+    public function save_multifeedstory_click($added)
+    {
+        $uid = $this->get_fb_param('user');
+        $ut = $_GET['kt_ut'];
+
+        $template_id = null;
+
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        else
+            $subtype1 = null;
+
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        else
+            $subtype2 = null;
+
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        else
+            $subtype3 = null;
+
+        $this->an_multifeedstory_click($added, $ut, $template_id, $subtype1, $subtype2, $subtype3, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+
+    public function save_profilebox_click($added)
+    {
+        $uid = $this->get_fb_param('user');
+        
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        else
+            $subtype1 = null;
+
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        else
+            $subtype2 = null;
+
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        else
+            $subtype3 = null;
+
+        $owner_uid = $_GET['kt_owner_uid'];
+
+        $this->an_profilebox_click($added, $subtype1, $subtype2, $subtype3, $owner_uid, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+
+
+    public function save_profileinfo_click($added)
+    {
+        $uid = $this->get_fb_param('user');
+        
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        else
+            $subtype1 = null;
+
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        else
+            $subtype2 = null;
+
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        else
+            $subtype3 = null;
+
+        $owner_uid = $_GET['kt_owner_uid'];
+        $this->an_profileinfo_click($added, $subtype1, $subtype2, $subtype3, $owner_uid, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+        
     public function save_app_removed()
     {
         global $kt_facebook;

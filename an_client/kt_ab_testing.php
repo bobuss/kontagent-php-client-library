@@ -39,7 +39,6 @@ class AB_Testing_Manager
     public function fetch_ab_testing_data($campaign, $force=false)
     {
         $url_str = $this->m_ab_backend.self::$url_prefix."/".$this->m_backend_api_key."/".$campaign. "/";
-        
         if($force)
         {
             $url_str = $url_str."?f=1";
@@ -56,7 +55,7 @@ class AB_Testing_Manager
             fclose($sock);
 
             $json_obj = json_decode($url_result);
-
+            
             if( $json_obj->changed )
             {
                 if(isset($json_obj->page_and_messages))
