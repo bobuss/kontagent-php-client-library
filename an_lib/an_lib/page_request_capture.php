@@ -10,7 +10,7 @@ if(isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUE
 }
 else
 {
-    echo '<img src="'.$url_str.'" width="1px" height="1px" style="display:none;"/>';
+    echo '<img src="'.$url_str.'" width="0px" height="0px" style="display:none;"/>';
 }
 
 ?>

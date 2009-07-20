@@ -165,7 +165,7 @@ class Analytics_Utils
 
     // if $uuid is provided, then it doesn't generate a new one (directed comm)
     private function gen_kt_comm_query_str($comm_type, $template_id, $subtype1, $subtype2, $subtype3, &$ret_str,
-                                           $uuid=null, $uid=null){
+                                           $uuid_arg=null, $uid=null){
         $param_array = array();
         $dir_val;       
         $uuid = 0;
@@ -188,11 +188,15 @@ class Analytics_Utils
         if(isset($dir_val))
         {
             if($dir_val == Analytics_Utils::directed_val){
-                if(!isset($uuid) || $uuid == 0)
+                if(!isset($uuid_arg))
                 {
                     $uuid = $this->gen_long_uuid();
+                    $param_array['kt_ut'] = $uuid;
                 }
-                $param_array['kt_ut'] = $uuid;
+                else
+                {
+                    $param_array['kt_ut'] = $uuid_arg;
+                }
             }
             else if($dir_val == Analytics_Utils::profile_val){
                 if(!isset($uid))
@@ -623,7 +627,7 @@ class Analytics_Utils
                                                    'st3' => $subtype3));        
     }
 
-    private function an_profilebox_click($added, $subtype1, $subtype2, $subtype3, $owner_uid, $clicker_uid)
+    private function an_profilebox_click($has_been_added, $subtype1, $subtype2, $subtype3, $owner_uid, $clicker_uid)
     {
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
@@ -638,7 +642,7 @@ class Analytics_Utils
                                                    ));
     }
 
-    private function an_profileinfo_click($added, $subtype1, $subtype2, $subtype3, $owner_uid, $clicker_uid)
+    private function an_profileinfo_click($has_been_added, $subtype1, $subtype2, $subtype3, $owner_uid, $clicker_uid)
     {
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
@@ -1322,8 +1326,9 @@ class Analytics_Utils
                                              $arg_array);
     }
 
-    public function kt_feedstory_send($uid, $uuid, $subtype1=null, $subtype2=null, $subtype3=null)
+    public function kt_feedstory_send($uuid, $subtype1=null, $subtype2=null, $subtype3=null)
     {
+        $uid = $this->get_fb_param('user');
         $arg_array = array('tu' => 'feedstory',
                            's' => $uid,
                            'u' => $uuid);
@@ -1340,8 +1345,9 @@ class Analytics_Utils
                                              $arg_array);
     }
 
-    public function kt_multifeedstory_send($uid, $uuid, $post_request)
+    public function kt_multifeedstory_send($uuid, $post_request)
     {
+        $uid = $this->get_fb_param('user');
         // the recipent can be found either as ktuid or as friend_selector_id.
         if(isset($post_request['friend_selector_id']))
             $target_uid = $post_request['friend_selector_id'];
@@ -1530,8 +1536,8 @@ class Analytics_Utils
         if(isset($_GET['kt_st3']))
             $subtype3 = $_GET['kt_st3'];
         
-        if(isset($_POST['ids']))
-            $recipient_arry = $_POST['ids'];
+        if(isset($_REQUEST['ids']))
+            $recipient_arry = $_REQUEST['ids'];
         else
             $recipient_arry = '';
 
