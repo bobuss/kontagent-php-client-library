@@ -163,6 +163,10 @@ class Analytics_Utils
         return $this->m_backend_api_key."_sut";
     }
 
+    public function gen_ru_cookie_key(){
+        return $this->m_backend_api_key."_ru";
+    }
+    
     // if $uuid is provided, then it doesn't generate a new one (directed comm)
     private function gen_kt_comm_query_str($comm_type, $template_id, $subtype1, $subtype2, $subtype3, &$ret_str,
                                            $uuid_arg=null, $uid=null){
@@ -525,6 +529,14 @@ class Analytics_Utils
                                                    'su'=>$short_uuid));
     }
 
+    private function an_app_added_profile($uid, $owner_uid){
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1", $this->m_backend_api_key,
+                                             $this->m_backend_secret_key,
+                                             "apa",
+                                             array('s'=>$uid,
+                                                   'ru'=>$owner_uid));
+    }
+    
 
     private function an_app_added_nonviral($uid){
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1", $this->m_backend_api_key,
@@ -633,7 +645,7 @@ class Analytics_Utils
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
                                              "psr",
                                              array('r' => $clicker_uid,
-                                                   's'  => $clicker_uid,
+                                                   's'  => $owner_uid,
                                                    'i' => $has_been_added,
                                                    'tu' => 'profilebox',
                                                    'st1' => $subtype1,
@@ -648,7 +660,7 @@ class Analytics_Utils
                                              $this->m_backend_api_key, $this->m_backend_secret_key,
                                              "psr",
                                              array('r' => $clicker_uid,
-                                                   's'  => $clicker_uid,
+                                                   's'  => $owner_uid,
                                                    'i' => $has_been_added,
                                                    'tu' => 'profileinfo',
                                                    'st1' => $subtype1,
@@ -741,6 +753,7 @@ class Analytics_Utils
    private function get_stripped_kt_args_url($short_tag=null, $ids_array=null)
    {
        $param_array = array();
+
        foreach($_GET as $arg => $val)
        {
            if (!isset(self::$s_kt_args[$arg]))
@@ -757,6 +770,10 @@ class Analytics_Utils
                {
                    $param_array['ut'] = $val;
                    setcookie($this->gen_ut_cookie_key(), $val, time()+600); // 10 minutes
+               }
+               else if( $arg == 'kt_owner_uid' )
+               {
+                   setcookie($this->gen_ru_cookie_key(), $val, time()+600); 
                }
            }
        }
@@ -1410,16 +1427,6 @@ class Analytics_Utils
         $has_direction = isset($_GET['d']);
         $uid = $this->get_fb_param('user');
 
-        /*
-        if($has_direction && $_GET['d'] == self::directed_val)
-        {
-            $this->an_app_added_directed($uid, $_GET['ut']);
-        }
-        else if($has_direction && $_GET['d'] == self::undirected_val)
-        {
-            $this->an_app_added_undirected($uid, $_GET['sut']);
-        }
-        */
         if(!empty($_COOKIE[$this->gen_ut_cookie_key()]))
         {
             $this->an_app_added_directed($uid, $_COOKIE[$this->gen_ut_cookie_key()]);
@@ -1429,6 +1436,11 @@ class Analytics_Utils
         {
             $this->an_app_added_undirected($uid, $_COOKIE[$this->gen_sut_cookie_key()]);
             setcookie($this->gen_sut_cookie_key(), "", time()-600); //remove cookie
+        }
+        else if(!empty($_COOKIE[$this->gen_ru_cookie_key()]))
+        {
+            $this->an_app_added_profile($uid, $_COOKIE[$this->gen_ru_cookie_key()]);
+            setcookie($this->gen_ru_cookie_key(), "", time()-600); //remove cookie
         }
         else
         {
