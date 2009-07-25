@@ -1111,6 +1111,7 @@ class Analytics_Utils
         $r['message_id'] = $msg_info_array[0];
         $r['message'] = $msg_info_array[2];
         $r['button'] = $msg_info_array[3];
+        $r['title'] = $msg_info_array[4];
         return $r;
     }
     
