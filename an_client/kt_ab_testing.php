@@ -12,7 +12,8 @@ class AB_Testing_Manager
     private $m_memcached_server;
     private $m_selected_msg_page_pair_dict;
     private static $url_prefix = "/abtest/campaign_info";
-
+    const VO_CUSTOM_VARIABLE_REGEX_STR = '/\{\{(.*?)\}\}/';
+    
     public function __construct($kt_api_key,$kt_secret_key,
                                 $kt_ab_backend_host,$kt_ab_backend_port=80)
     {
@@ -179,6 +180,9 @@ class AB_Testing_Manager
         return $json_obj->handle_index;
     }
     
+    // Use case: let message be "Bob scores {{score}} in {{game}}"
+    // $data_assoc_array : {"score" => 10, "game" => "chess"}
+    // 
     public function get_ab_testing_message($campaign)
     {
         $dict = $this->get_ab_helper($campaign);
@@ -269,14 +273,51 @@ class AB_Testing_Manager
         return $this->m_selected_msg_page_pair_dict[$campaign]['page_msg'];
     }
     
-    public function get_selected_msg_info($campaign)
+    public function get_selected_msg_info($campaign, $custom_data=null)
     {
-        return  $this->m_selected_msg_page_pair_dict[$campaign]['msg'];
+        $r = $this->m_selected_msg_page_pair_dict[$campaign]['msg'];
+        $r[2] = $this->replace_vo_custom_variable($r[2], $custom_data);
+        return $r;
     }
 
-    public function get_selected_page_info($campaign)
+    public function get_selected_page_info($campaign, $custom_data=null)
     {
-        return  $this->m_selected_msg_page_pair_dict[$campaign]['page'];
+        $r = $this->m_selected_msg_page_pair_dict[$campaign]['page'];
+        $r[2] = $this->replace_vo_custom_variable($r[2], $custom_data);
+        return $r;
+    }
+
+    // Use case: let message be "Bob scores {{score}} in {{game}}"
+    // $data_assoc_array : {"score" => 10, "game" => "chess"}
+    // returns Bob scores 10 in chess.
+    private function replace_vo_custom_variable($text, $data_assoc_array)
+    {
+        preg_match_all(self::VO_CUSTOM_VARIABLE_REGEX_STR, $text, $matches);
+        $r = null;
+        if(sizeof($matches[0]) == 0 && sizeof($matches[1]) == 0)
+        {
+            // nothing to replace
+            $r =  $text;
+        }
+        else
+        {
+            $replaced_val_array = array();
+            for($i=0; $i<sizeof($matches[1]); $i++)
+            {
+                $varname = $matches[1][$i];
+                if(isset($data_assoc_array[$varname]))
+                {
+                    $replaced_val_array[] = $data_assoc_array[$varname];
+                }
+                else
+                {
+                    // throw a kontagent exception
+                    throw new Exception($varname . " is not defined in data_assoc_array.");
+                }
+            }// for
+            $r = str_replace($matches[0], $replaced_val_array, $text);
+        }
+        return $r;        
     }
 }
 

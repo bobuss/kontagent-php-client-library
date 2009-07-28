@@ -36,7 +36,6 @@ class Analytics_Utils
     const ESC_URL_UT_REGEX_STR = '/(ut%.*?)%/';
     const ESC_URL_SUT_REGEX_STR = '/(sut%.*?)%/';
 
-    
     public $m_backend_api_key;
     private $m_backend_secret_key;
     private $m_backend_url;
@@ -1067,11 +1066,11 @@ class Analytics_Utils
         return "p".$st3_str;
     }
     
-    public function kt_get_invite_post_link_vo($invite_post_link, $campaign)
+    public function kt_get_invite_post_link_vo($invite_post_link, $campaign, $data_assoc_array=null)
     {
         if ($this->m_invite_message_info == null)
         {
-            $msg_info_array = $this->m_ab_testing_mgr->get_ab_testing_message($campaign);
+            $msg_info_array = $this->m_ab_testing_mgr->get_selected_msg_info($campaign, $data_assoc_array);
             $this->m_invite_message_info = $msg_info_array;
         }
         else
@@ -1114,7 +1113,7 @@ class Analytics_Utils
         $r['title'] = $msg_info_array[4];
         return $r;
     }
-    
+
     //OG
     public function kt_get_invite_post_link($invite_post_link,
                                             $template_id = null, $subtype1 = null, $subtype2 = null)
@@ -1179,7 +1178,7 @@ class Analytics_Utils
     {
         if ($this->m_invite_message_info == null)
         {
-            $msg_info_array = $this->m_ab_testing_mgr->get_ab_testing_message($campaign);
+            $msg_info_array = $this->m_ab_testing_mgr->get_selected_msg_info($campaign);
             $this->m_invite_message_info = $msg_info_array;
         }
         else
