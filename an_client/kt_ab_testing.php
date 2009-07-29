@@ -34,17 +34,56 @@ class AB_Testing_Manager
         $this->m_selected_msg_page_pair_dict = array();
     }
                                 
-    
+    // append a sig to outbound http request to kontagent's AB server
+    private function append_sig($url_str, $force)
+    {
+        $arg_array = array();
+        $time_stamp = gmdate("M-d-YTH:i:s");
+        $sig = md5("AB_TEST".$time_stamp.$this->m_backend_secret_key);
+
+        if($force)
+        {
+            $arg_array['f'] = 1;
+        }
+        $arg_array['ts'] = $time_stamp;
+        $arg_array['kt_sig'] = $sig;
+
+        $url_str = $url_str."?".http_build_query($arg_array,'','&');
+        return $url_str;
+    }
+
+    // validate inbound messages from kontagent.
+    private function validate_checksum($json_obj)
+    {
+        // construct an array.
+        $assoc_array = array();
+        foreach($json_obj as $k=>$v)
+        {
+            if($k!="sig")
+                $assoc_array[$k] = $v;
+        } // foreach
+        ksort($assoc_array);
+        
+        $sig = '';
+        foreach( $assoc_array as $k=>$v)
+        {
+            $sig = $sig.$k.'='.str_replace(" ", "", json_encode($v));
+        }
+        $sig.=$this->m_backend_secret_key;
+        
+        if( md5($sig) != $json_obj->sig )
+        {
+            throw new Exception("Your inbound ab test message from kontagent fails checksum validation");
+        }
+    }
+        
     // if $force is set to be true, it will grab the campaign contents even if the changed flag is
     // set to be false.
     public function fetch_ab_testing_data($campaign, $force=false)
     {
         $url_str = $this->m_ab_backend.self::$url_prefix."/".$this->m_backend_api_key."/".$campaign. "/";
-        if($force)
-        {
-            $url_str = $url_str."?f=1";
-        }
-
+        $url_str = $this->append_sig($url_str, $force);
+        
         $sock = fopen( $url_str , 'r' );
         $r = null;
         
@@ -59,6 +98,8 @@ class AB_Testing_Manager
             
             if( $json_obj->changed )
             {
+                $this->validate_checksum($json_obj);
+
                 if(isset($json_obj->page_and_messages))
                 {
                     // process mesage and page "together" for feed related campaigns
@@ -169,7 +210,6 @@ class AB_Testing_Manager
                 $dict = unserialize($serialized_campaign_str);
             }
         }
-        $dict = $this->fetch_ab_testing_data($campaign, true); // force it//xxx
         return $dict;
     }
         

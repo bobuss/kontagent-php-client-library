@@ -102,7 +102,7 @@ class Kt_FacebookRestClient extends FacebookRestClient
     }
         
     
-    public function &notifications_sendEmail($recipients, $subject, $text, $fbml, $template_id=null, $st1=null, $st2=null,)
+    public function &notifications_sendEmail($recipients, $subject, $text, $fbml, $template_id=null, $st1=null, $st2=null)
     {
         $uuid = $this->m_an->gen_email_link($fbml, $template_id, $st1, $st2);
         
@@ -182,7 +182,7 @@ class Kt_FacebookRestClient extends FacebookRestClient
                                                $msg_data_array=null, $page_data_array=null)
     {
         $msg_info_array = $this->m_an->m_ab_testing_mgr->get_selected_msg_info($campaign_name, $msg_data_array);
-        $page_info = $this->m_an->m_ab_testing_mgr->get_selected_page_info($campaign_name, $page_data_array);
+        $page_info = $this->m_an->m_ab_testing_mgr->get_selected_page_info($campaign_name,$page_data_array);
 
         $msg_id = $msg_info_array[0];
         $msg_text = $msg_info_array[2];
