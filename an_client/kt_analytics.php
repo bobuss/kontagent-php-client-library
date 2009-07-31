@@ -447,7 +447,7 @@ class Analytics_Utils
         $user_data['s'] = $user_id;
       
         if (isset($birthday) && $birthday != ''){
-            $tmp_array = split(',',$birthday);
+            $tmp_array = explode(',',$birthday);
             if(count($tmp_array) == 2)
                 $user_data['b'] = urlencode(trim($tmp_array[1]));
             else
