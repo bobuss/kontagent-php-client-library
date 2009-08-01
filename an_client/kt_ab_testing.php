@@ -181,14 +181,6 @@ class AB_Testing_Manager
     {
         $fake_key_is_valid = $this->m_memcached_server->get($this->gen_memcache_fake_key($campaign));
 
-        include_once 'Log.php';#xxx
-        $logger = &Log::singleton(
-            'file',
-            '/home/dafreak/test.log',
-            //$log_file_path,
-            NULL,
-            NULL);//xxx
-        
         if($fake_key_is_valid == false)
         {
             // The real key should have a valid json object.
@@ -200,7 +192,6 @@ class AB_Testing_Manager
             }
             else
             {
-                $logger->log('fake_key is expired but has a valid serialized_str');//xxx
                 $dict = $this->fetch_ab_testing_data($campaign);
                 if($dict == null)
                 {
@@ -321,12 +312,23 @@ class AB_Testing_Manager
         $dict['page_msg'] = $page_msg_info;
         $this->m_selected_msg_page_pair_dict[$campaign] = $dict;
 
-        $cookie_data = array();
-        $cookie_data['data'] = $page_msg_info;
-        $cookie_data['handle_index'] = $this->get_ab_testing_campaign_handle_index($campaign);
-        setcookie( "KT_FEED_AB_TEST_INFO".$campaign, json_encode($cookie_data) );
+//        $cookie_data = array();
+//        $cookie_data['data'] = $page_msg_info;
+//        $cookie_data['handle_index'] = $this->get_ab_testing_campaign_handle_index($campaign);
+        
+        setcookie( "KT_FEED_AB_TEST_INFO".$campaign,
+                   $this->serialize_msg_page_tuple_helper($campaign, $page_msg_info) );
     }
-    
+
+    public function serialize_msg_page_tuple_helper($campaign, $page_msg_info)
+    {
+        $data = array();
+        $data['campaign'] = $campaign;
+        $data['data'] = $page_msg_info;
+        $data['handle_index'] = $this->get_ab_testing_campaign_handle_index($campaign);
+        return json_encode($data);
+    }
+
     public function get_selected_page_msg_info($campaign)
     {
         return $this->m_selected_msg_page_pair_dict[$campaign]['page_msg'];

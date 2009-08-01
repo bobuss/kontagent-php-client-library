@@ -1000,7 +1000,13 @@ class Analytics_Utils
         }
         return $uuid;
     }
-    
+
+    public function get_serialized_msg_page_tuple($campaign)
+    {
+        $info = $this->m_ab_testing_mgr->get_selected_page_msg_info($campaign);
+        return $this->m_ab_testing_mgr->serialize_msg_page_tuple_helper($campaign, $info);
+    }
+        
     // for the new feed form
     // it wraps individual links
     public function gen_feedstory_link($link, $uuid, $subtype1, $subtype2, $subtype3)
@@ -1023,6 +1029,17 @@ class Analytics_Utils
         return $new_value;
     }
 
+    // designed to be used by feed_handler(fbml)
+    public function gen_feedstory_link_vo($link, $uuid, $serialized_data)
+    {
+        $info = json_decode(str_replace('\\', '', $serialized_data), true);
+        $st1 = "aB_".$info['campaign']."___".$info['handle_index'];
+        $st2 = $this->format_kt_st2($info['data'][0]);
+        $st3 = $this->format_kt_st3($info['data'][0]);        
+        return $this->gen_feedstory_link($link, $uuid, $st1, $st2, $st3);
+    }
+    
+    
     public function gen_multifeedstory_link($link, $uuid, $subtype1, $subtype2, $subtype3)
     {
         $this->m_st1_tmp = $subtype1;
@@ -1343,6 +1360,29 @@ class Analytics_Utils
                                              $arg_array);
     }
 
+    // designed to be used by feed_handler(fbml)
+    public function kt_feedstory_send_vo($uuid, $serialized_data)
+    {
+        $info = json_decode(str_replace('\\', '', $serialized_data), true);
+        $st1 = "aB_".$info['campaign']."___".$info['handle_index'];
+        $st2 = $this->format_kt_st2($info['data'][0]);
+        $st3 = $this->format_kt_st3($info['data'][0]);        
+        return $this->kt_feedstory_send($uuid, $st1, $st2, $st3);
+    }
+    // designed to be used by feed_handler(fbml)
+    public function kt_get_ab_feed_msg_text($serialized_data)
+    {
+        $info = json_decode(str_replace('\\', '', $serialized_data), true);
+        return $info['data'][3];
+    }
+    // designed to be used by feed_handler(fbml)
+    public function kt_get_ab_feed_call_to_action_text($serialized_data)
+    {
+        $info = json_decode(str_replace('\\', '', $serialized_data), true);
+        return $info['data'][2];
+    }
+        
+    
     public function kt_feedstory_send($uuid, $subtype1=null, $subtype2=null, $subtype3=null)
     {
         $uid = $this->get_fb_param('user');
