@@ -331,7 +331,10 @@ class AB_Testing_Manager
 
     public function get_selected_page_msg_info($campaign)
     {
-        return $this->m_selected_msg_page_pair_dict[$campaign]['page_msg'];
+        $r = $this->m_selected_msg_page_pair_dict[$campaign]['page_msg'];
+        #$r[2] = $this->replace_vo_custom_variable($r[2], $pg_custom_data);
+        #$r[3] = $this->replace_vo_custom_variable($r[3], $msg_custom_data);
+        return $r;
     }
     
     public function get_selected_msg_info($campaign, $custom_data=null)
@@ -351,7 +354,7 @@ class AB_Testing_Manager
     // Use case: let message be "Bob scores {{score}} in {{game}}"
     // $data_assoc_array : {"score" => 10, "game" => "chess"}
     // returns Bob scores 10 in chess.
-    private function replace_vo_custom_variable($text, $data_assoc_array)
+    public function replace_vo_custom_variable($text, $data_assoc_array)
     {
         preg_match_all(self::VO_CUSTOM_VARIABLE_REGEX_STR, $text, $matches);
         $r = null;

@@ -1059,7 +1059,16 @@ class Analytics_Utils
         return $new_value;
     }
     
-    // assumption : st1_str is set to the campaign_name
+    public function gen_multifeedstory_link_vo($link, $uuid, $serialized_data)
+    {
+        $info = json_decode(str_replace('\\', '', $serialized_data), true);
+        $st1 = "aB_".$info['campaign']."___".$info['handle_index'];
+        $st2 = $this->format_kt_st2($info['data'][0]);
+        $st3 = $this->format_kt_st3($info['data'][0]);        
+        return $this->gen_multifeedstory_link($link, $uuid, $st1, $st2, $st3);
+    }
+        
+// assumption : st1_str is set to the campaign_name
     public function format_kt_st1($st1_str)
     {
         $handle_index = $this->m_ab_testing_mgr->get_ab_testing_campaign_handle_index($st1_str);
@@ -1370,18 +1379,17 @@ class Analytics_Utils
         return $this->kt_feedstory_send($uuid, $st1, $st2, $st3);
     }
     // designed to be used by feed_handler(fbml)
-    public function kt_get_ab_feed_msg_text($serialized_data)
+    public function kt_get_ab_feed_msg_text($serialized_data, $custom_data=null)
     {
         $info = json_decode(str_replace('\\', '', $serialized_data), true);
-        return $info['data'][3];
+        return $this->m_ab_testing_mgr->replace_vo_custom_variable($info['data'][3], $custom_data);
     }
     // designed to be used by feed_handler(fbml)
-    public function kt_get_ab_feed_call_to_action_text($serialized_data)
+    public function kt_get_ab_feed_call_to_action_text($serialized_data, $custom_data=null)
     {
         $info = json_decode(str_replace('\\', '', $serialized_data), true);
-        return $info['data'][2];
+        return $this->m_ab_testing_mgr->replace_vo_custom_variable($info['data'][2], $custom_data);
     }
-        
     
     public function kt_feedstory_send($uuid, $subtype1=null, $subtype2=null, $subtype3=null)
     {
@@ -1402,7 +1410,16 @@ class Analytics_Utils
                                              $arg_array);
     }
 
-    public function kt_multifeedstory_send($uuid, $post_request)
+    public function kt_multifeedstory_send_vo($uuid, $post_request, $serialized_data)
+    {
+        $info = json_decode(str_replace('\\', '', $serialized_data), true);
+        $st1 = "aB_".$info['campaign']."___".$info['handle_index'];
+        $st2 = $this->format_kt_st2($info['data'][0]);
+        $st3 = $this->format_kt_st3($info['data'][0]);        
+        return $this->kt_multifeedstory_send($uid, $post_request, $st1, $st2, $st3);
+    }
+
+    public function kt_multifeedstory_send($uuid, $post_request, $subtype1=null, $subtype2=null, $subtype3=null)
     {
         $uid = $this->get_fb_param('user');
         // the recipent can be found either as ktuid or as friend_selector_id.
