@@ -1072,14 +1072,7 @@ class Analytics_Utils
     public function format_kt_st1($st1_str)
     {
         $handle_index = $this->m_ab_testing_mgr->get_ab_testing_campaign_handle_index($st1_str);
-        if( $handle_index > 0 )
-        {
-            return "aB_".$st1_str."___".(string)$handle_index;
-        }
-        else
-        {
-            return "aB_".$st1_str;
-        }
+        return "aB_".$st1_str."___".(string)$handle_index;
     }
 
     public function format_kt_st2($st2_str)
