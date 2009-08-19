@@ -119,7 +119,7 @@ class Kt_Comm {
                 $url_path = $this->get_call_url($kt_api_url, $version, $api_key, $secret_key, $api_func, $arg_assoc_array);
                 
                 fwrite($this->m_socket, "GET $url_path HTTP/1.1\r\n");
-                fwrite($this->m_socket, "Host: $this->m_ip\r\n");
+                fwrite($this->m_socket, "Host: $this->m_server\r\n");
                 fwrite($this->m_socket, "Content-type: application/x-www-form-urlencoded\r\n");
                 fwrite($this->m_socket, "Accept: */*\r\n");
                 fwrite($this->m_socket, "\r\n");
@@ -153,7 +153,7 @@ class Kt_Comm {
         ksort($formatted_arg_assoc_array);
         
         // Get signature
-        $formatted_arg_assoc_array['an_sig'] = $this->compute_signature($formatted_arg_assoc_array);
+        $formatted_arg_assoc_array['an_sig'] = $this->compute_signature($formatted_arg_assoc_array, $secret_key);
         
         // Build complete query parameters
         $query = http_build_query($formatted_arg_assoc_array, '', '&');
@@ -169,7 +169,7 @@ class Kt_Comm {
      * @param $formatted_arg_assoc_array
      * @return string an_sig md5 hash
      */
-    private function compute_signature($formatted_arg_assoc_array) {
+    private function compute_signature($formatted_arg_assoc_array, $secret_key) {
         $sig = '';
         
         // This already happened in get_call_url() so we don't need to sort again
