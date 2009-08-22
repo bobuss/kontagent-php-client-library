@@ -51,7 +51,8 @@ Math.uuid = (function() {
       }
     }
 
-    return uuid.join('');
+    var ret = uuid.join('');
+    return ret.substring(0, 32);
   };
 })();
 
