@@ -78,7 +78,7 @@ class Kt_Comm {
         // Looks like entire datacenter is down, so try our luck with one of global IPs
         if ($selected_ip == "") {
             $global_ip_list = gethostbynamel("api.global.kontagent.net");
-            shuffle($ip_list);
+            shuffle($global_ip_list);
             
             foreach($global_ip_list as $global_ip) {
                 $socket = @stream_socket_client($global_ip.":".$port, $errno, $errstr, 0.5, STREAM_CLIENT_CONNECT);
