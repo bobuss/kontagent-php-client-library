@@ -43,6 +43,13 @@ class Kt_FacebookRestClient extends FacebookRestClient
                                                                $ab_testing_host, $ab_testing_port));
     }
     
+    public function &users_getInfo($uids, $fields) {
+        return $this->call_method('facebook.users.getInfo',
+                                  array('uids' => $uids,
+                                        'fields' => $fields,
+                                        'locale' => 'en_US'));
+    }
+
     // type: is either 'user_to_user' for normal notifications, or
     // 'app_to_user' for annoucement.
     public function &notifications_send($to_ids, $notification, $type, $template_id=null, $st1=null, $st2=null, $from_id=null)
