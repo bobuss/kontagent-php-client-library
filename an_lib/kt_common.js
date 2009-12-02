@@ -207,10 +207,48 @@ function kt_getCookie(c_name)
       c_start = c_start + c_name.length+1;
       var c_end=document.cookie.indexOf(";",c_start);
       if (c_end==-1) c_end=document.cookie.length;
-      return unescape(document.cookie.substring(c_start,c_end));
+      return unescape(document.cookie.substring(c_start,c_end).replace(/\+/g, ' '));
     }
   }
   return "";
+}
+
+function gen_stream_link(link, uuid, st1, st2)
+{
+  var param_array = {'kt_type' : 'stream',
+		     'kt_ut'   : String(uuid)};
+  if(st1 != undefined)
+  {
+    param_array['kt_st1'] = st1;
+  }
+  if(st2 != undefined)
+  {
+    param_array['kt_st2'] = st2;
+  }
+  var query_str = http_build_query(param_array);
+  var mod_link = append_kt_query_str(link, query_str);
+  return mod_link;
+}
+
+var kt_feed_cookie_prefix  = 'KT_FEED_AB_TEST_INFO';
+
+function gen_stream_link_vo(link, uuid, campaign)
+{
+  // check out cache_ab_testing_msg_page_tuplein kt_ab_testing.php to see how data is being stored in cookies
+  // {'data' : page_msg_info,
+  //  'handle_index': handle_index}
+  var abtest_data = JSON.parse(kt_getCookie(kt_feed_cookie_prefix+campaign));
+  var param_array = { 'kt_type' : 'stream',
+		      'kt_ut': String(uuid) };
+
+  param_array['kt_st1'] = format_kt_st1(campaign, abtest_data['handle_index']);
+  // For feeds, messages and pages are tightly coupled
+  param_array['kt_st2'] = format_kt_st2(abtest_data['data'][0]);
+  param_array['kt_st3'] = format_kt_st3(abtest_data['data'][0]);
+
+  var query_str = http_build_query(param_array);
+  var mod_link = append_kt_query_str(link, query_str);
+  return mod_link;
 }
 
 function gen_feedstory_link(link, uuid, st1, st2)
@@ -231,8 +269,6 @@ function gen_feedstory_link(link, uuid, st1, st2)
   return mod_link;
 }
 
-var kt_feed_cookie_prefix  = 'KT_FEED_AB_TEST_INFO';
-
 function gen_feedstory_link_vo(link, uuid, campaign)
 {
   // check out cache_ab_testing_msg_page_tuplein kt_ab_testing.php to see how data is being stored in cookies
@@ -250,6 +286,19 @@ function gen_feedstory_link_vo(link, uuid, campaign)
   var query_str = http_build_query(param_array);
   var mod_link = append_kt_query_str(link, query_str);
   return mod_link;
+}
+
+function get_selected_stream_msg(campaign, data_assoc_array)
+{
+  var abtest_data = JSON.parse(kt_getCookie(kt_feed_cookie_prefix+campaign));
+  var r =  replace_vo_custom_variable(abtest_data['data'][3], data_assoc_array);
+  return r;
+}
+
+function get_selected_stream_call_to_action(campaign, data_assoc_array)
+{
+  var abtest_data = JSON.parse(kt_getCookie(kt_feed_cookie_prefix+campaign));
+  return replace_vo_custom_variable(abtest_data['data'][2], data_assoc_array);
 }
 
 function format_kt_st1(st1_str, handle_index)

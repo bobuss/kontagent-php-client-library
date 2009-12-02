@@ -610,6 +610,20 @@ class Analytics_Utils
                                                   'st3' => $subtype3));
    }
 
+    private function an_stream_click($has_been_added, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $subtype3=null, $recipient_uid = null)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "psr",
+                                             array('r' => $recipient_uid,
+                                                   'i' => $has_been_added,
+                                                   'u' => $uuid,
+                                                   'tu' => 'stream',
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3));
+    }
+    
     private function an_feedstory_click($has_been_added, $uuid, $template_id=null, $subtype1=null, $subtype2=null, $subtype3=null, $recipient_uid = null)
     {
         $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
@@ -1383,7 +1397,25 @@ class Analytics_Utils
         $info = json_decode(str_replace('\\', '', $serialized_data), true);
         return $this->m_ab_testing_mgr->replace_vo_custom_variable($info['data'][2], $custom_data);
     }
-    
+
+    public function kt_stream_send($uuid, $subtype1=null, $subtype2=null, $subtype3=null)
+    {
+        $uid = $this->get_fb_param('user');
+        $arg_array = array('tu' => 'stream',
+                           's' => $uid,
+                           'u' => $uuid);
+        if(isset($subtype1))
+            $arg_array['st1'] = $subtype1;
+        if(isset($subtype2))
+            $arg_array['st2'] = $subtype2;
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+        $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             'pst',
+                                             $arg_array);
+    }
+
     public function kt_feedstory_send($uuid, $subtype1=null, $subtype2=null, $subtype3=null)
     {
         $uid = $this->get_fb_param('user');
@@ -1693,6 +1725,32 @@ class Analytics_Utils
             $subtype3 = null;
         
         $this->an_feedpub_click($added, $ut, $template_id, $subtype1, $subtype2, $subtype3, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+
+    public function save_stream_click($added)
+    {
+        $uid = $this->get_fb_param('user');
+        $ut = $_GET['kt_ut'];
+
+        $template_id = null;
+                
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        else
+            $subtype1 = null;
+
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        else
+            $subtype2 = null;
+
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+        else
+            $subtype3 = null;
+
+        $this->an_stream_click($added, $ut, $template_id, $subtype1, $subtype2, $subtype3, $uid);
         return $this->get_stripped_kt_args_url();
     }
     

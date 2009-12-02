@@ -76,6 +76,12 @@ if(! (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_RE
                 $kt_facebook->redirect($kt_url);
                 break;
             }
+            case "stream":
+            {
+                $kt_url = $an->save_stream_click($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
             case "feedstory":
             {
                 $kt_url = $an->save_feedstory_click($kt_is_added);
