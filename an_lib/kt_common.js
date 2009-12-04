@@ -179,7 +179,7 @@ function http_build_query( formdata, numeric_prefix, arg_separator ) {
             }
             return tmp.join(arg_separator);
         } else if(typeof(val) != "function") {
-            return this.urlencode(key) + "=" + this.urlencode(val);
+	  return urlencode(key) + "=" + urlencode(val);
         }
     };
 
