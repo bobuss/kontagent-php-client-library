@@ -879,7 +879,13 @@ class Analytics_Utils
         $tmp_binary = base_convert($c, 10, 2);
         $c = $c << (8 - strlen($tmp_binary));
       
-        return dechex($a ^ $b ^ $c);
+        $r =  dechex($a ^ $b ^ $c);
+        if (strlen($r) > 8)
+        {
+            // handle a 64 bit arch.
+            $r = substr($r, -8);
+        }
+        return $r;
     }
 
     public function gen_notifications_link_vo(&$notification, $msg_text, $subtype1, $subtype2, $subtype3)
