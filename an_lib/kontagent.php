@@ -45,6 +45,9 @@ if(! (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_RE
         {
             $kt_is_added = $kt_facebook->fb_params['added'];
 
+            if( isset($kt_is_added) )
+                $kt_is_added = 0;
+            
             switch($_GET["kt_type"])        
             {
             case "nt":
@@ -138,13 +141,11 @@ function set_ab_testing_page($campaign)
     global $kt_facebook;
     if($kt_facebook->api_client->m_an->m_ab_testing_mgr->are_page_message_coupled($campaign))
     {
-        echo "<p>pages and messages are coupled</p>";
         $page_msg_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_page_msg_tuple($campaign);
         $kt_facebook->api_client->m_an->m_ab_testing_mgr->cache_ab_testing_msg_page_tuple($campaign, $page_msg_info);
     }
     else
     {
-        echo "<p>pages and messages aren't coupled</p>";
         $page_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_page($campaign);
         $msg_info = $kt_facebook->api_client->m_an->m_ab_testing_mgr->get_ab_testing_message($campaign);
         $kt_facebook->api_client->m_an->m_ab_testing_mgr->cache_ab_testing_msg_and_page($campaign, $msg_info, $page_info);
