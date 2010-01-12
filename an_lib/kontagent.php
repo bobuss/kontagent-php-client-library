@@ -45,7 +45,7 @@ if(! (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_RE
         {
             $kt_is_added = $kt_facebook->fb_params['added'];
 
-            if( isset($kt_is_added) )
+            if( !isset($kt_is_added) )
                 $kt_is_added = 0;
             
             switch($_GET["kt_type"])        
