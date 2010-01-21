@@ -1512,28 +1512,37 @@ class Analytics_Utils
     
     public function save_app_added()
     {
-        $has_direction = isset($_GET['d']);
+        $has_direction = isset($_GET['d']); 
         $uid = $this->get_fb_param('user');
 
-        if(!empty($_COOKIE[$this->gen_ut_cookie_key()]))
-        {
-            $this->an_app_added_directed($uid, $_COOKIE[$this->gen_ut_cookie_key()]);
-            setcookie($this->gen_ut_cookie_key(), "", time()-600); //remove cookie
+        if(!empty($_COOKIE[$this->gen_ut_cookie_key()])) 
+        { 
+            $this->an_app_added_directed($uid, $_COOKIE[$this->gen_ut_cookie_key()]); 
+            setcookie($this->gen_ut_cookie_key(), "", time()-600); //remove cookie 
+        } 
+        else if(isset($_GET['ut'])) 
+        { 
+            $this->an_app_added_directed($uid, $_GET['ut']); 
+        } 
+        else if(!empty($_COOKIE[$this->gen_sut_cookie_key()])) 
+        { 
+            $this->an_app_added_undirected($uid, $_COOKIE[$this->gen_sut_cookie_key()]); 
+            setcookie($this->gen_sut_cookie_key(), "", time()-600); //remove cookie 
+        } 
+        else if(isset(isset($_GET['sut']))) 
+        { 
+            $this->an_app_added_undirected($uid, $_GET['sut']); 
+        } 
+        else if(!empty($_COOKIE[$this->gen_ru_cookie_key()])) 
+        { 
+            $this->an_app_added_profile($uid, $_COOKIE[$this->gen_ru_cookie_key()]); 
+            setcookie($this->gen_ru_cookie_key(), "", time()-600); //remove cookie 
         }
-        else if(!empty($_COOKIE[$this->gen_sut_cookie_key()]))
-        {
-            $this->an_app_added_undirected($uid, $_COOKIE[$this->gen_sut_cookie_key()]);
-            setcookie($this->gen_sut_cookie_key(), "", time()-600); //remove cookie
-        }
-        else if(!empty($_COOKIE[$this->gen_ru_cookie_key()]))
-        {
-            $this->an_app_added_profile($uid, $_COOKIE[$this->gen_ru_cookie_key()]);
-            setcookie($this->gen_ru_cookie_key(), "", time()-600); //remove cookie
-        }
-        else
-        {
-            $this->an_app_added_nonviral($uid);
-        }
+        else 
+        { 
+            $this->an_app_added_nonviral($uid); 
+        } 
+
         /*
         else
         {
