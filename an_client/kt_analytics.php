@@ -1520,9 +1520,9 @@ class Analytics_Utils
             $this->an_app_added_directed($uid, $_COOKIE[$this->gen_ut_cookie_key()]); 
             setcookie($this->gen_ut_cookie_key(), "", time()-600); //remove cookie 
         } 
-        else if(isset($_GET['ut'])) 
+        else if(isset($_GET['kt_ut'])) 
         { 
-            $this->an_app_added_directed($uid, $_GET['ut']); 
+            $this->an_app_added_directed($uid, $_GET['kt_ut']); 
         } 
         else if(!empty($_COOKIE[$this->gen_sut_cookie_key()])) 
         { 
