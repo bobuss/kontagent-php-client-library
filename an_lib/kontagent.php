@@ -116,6 +116,24 @@ if(! (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_RE
                 $kt_facebook->redirect($kt_url);
                 break;
             }
+            case "dashboardAddNews":
+            {
+                $kt_url = $an->save_dashboardAddNews_click($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
+            case "dashboardPublishActivity":
+            {
+                $kt_url = $an->save_dashboardPublishActivity_click($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
+            case "dashboardAddGlobalNews":
+            {
+                $kt_url = $an->save_dashboardAddGlobalNews($kt_is_added);
+                $kt_facebook->redirect($kt_url);
+                break;
+            }
             }//switch
         }
     }

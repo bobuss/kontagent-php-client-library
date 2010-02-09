@@ -250,6 +250,89 @@ class Kt_FacebookRestClient extends FacebookRestClient
             $this->m_an->kt_profile_setInfo_send($user_id, $st1, $st2);
         return $r;
     }
+
+    // $uid : receipient's uid
+    // $type : either user_to_user or app_to_user
+    public function dashboard_addNews($uid, $news, $image = null, $st1=null, $st2=null, $st3=null, $type='user_to_user')
+    {
+        // append kt related parameters to action links
+        $uuid_array = $this->m_an->gen_kt_dashboard_addNews_link($news, $st1, $st2, $st3);
+
+        // facebook.dashboard.addNews
+        $r = parent::dashboard_addNews($uid, $news, $image);
+
+        // Send kontagent message
+        if(!empty($r))
+        {
+            if($type == 'app_to_user')
+            {
+                $this->m_an->kt_dashboard_addAppToUserNews($uid, $uuid_array, $st1, $st2, $st3);
+            }
+            else if($type == 'user_to_user')
+            {
+                $this->m_an->kt_dashboard_addNews($uid, $uuid_array, $st1, $st2, $st3);
+            }
+        }
+        return $r;
+    }
+
+    public function dashboard_multiAddNews($uids, $news, $image = null, $st1=null, $st2=null, $st3= null, $type='user_to_user')
+    {
+        // append kt related parameters to action links
+        if($type == 'app_to_user')
+        {
+            
+        }
+        else if($type == 'user_to_user')
+        {
+            $uuid_array = $this->m_an->gen_kt_dashboard_addNews_link($news, $st1, $st2, $st3);
+        }
+        
+        $r = parent::dashboard_multiAddNews($uids, $news, $image);
+
+        // Send kontagent message
+        if(!empty($r))
+        {
+            if($type == 'app_to_user')
+            {
+                $this->m_an->kt_dashboard_addAppToUserNews($uid, $uuid_array, $st1, $st2, $st3);
+            }
+            else if($type == 'user_to_user')
+            {
+                $this->m_an->kt_dashboard_addNews($uids, $uuid_array, $st1, $st2, $st3);
+            }
+        }
+        return $r;
+    }
+
+    public function dashboard_addGlobalNews($news, $image=null, $st1=null, $st2=null, $st3=null)
+    {
+        // append kt related parameters to action links
+        $uuid_array = $this->m_an->gen_kt_dashboard_addGlobalNews($news, $st1, $st2, $st3);
+
+        $r = parent::dashboard_addGlobalNews($news, $image, $st1, $st2, $st3);
+        
+        if(!empty($r))
+        {
+            $this->m_an->kt_dashboard_addGlobalNews($uuid_array, $st1, $st2, $st3);
+        }
+        return $r;
+    }
+    
+    public function dashboard_publishActivity($activity, $image = null, $st1=null, $st2=null, $st3=null)
+    {
+        $uuid = $this->m_an->gen_kt_dashboard_publishActivity_link($activity, $st1, $st2, $st3);
+        
+        $r = parent::dashboard_publishActivity($activity, $image);
+
+        if(!empty($r))
+        {
+            $this->m_an->kt_dashboard_publish_activity($uuid, $st1, $st2, $st3);
+        }
+        return $r;
+    }
+
+
 }
 
 

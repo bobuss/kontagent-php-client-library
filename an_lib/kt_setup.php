@@ -1,5 +1,4 @@
 <?php
-
 array_shift($argv);
 
 $use_ab_testing = false;
@@ -89,16 +88,24 @@ print "include_once AN_CLIENT.'/kt_analytics.php';\n";
 fwrite($FH, "include_once AN_CLIENT.'/kt_analytics.php';\n");
 
 // canvas_url
-print '$canvas_url = \'http://apps.facebook.com/'.$arr->canvas_name."';" . "\n";
-fwrite($FH, '$canvas_url = \'http://apps.facebook.com/'.$arr->canvas_name."';" . "\n");
+if(is_array($arr))
+{
+    print '$canvas_url = \'http://apps.facebook.com/'.$arr['canvas_name']."';" . "\n";
+    fwrite($FH, '$canvas_url = \'http://apps.facebook.com/'.$arr['canvas_name']."';" . "\n");    
+    print '$kt_default_post_add_url = \'http://apps.facebook.com/'.$arr['canvas_name']."';" . "\n";
+    fwrite($FH, '$kt_default_post_add_url = \'http://apps.facebook.com/'.$arr['canvas_name']."';" . "\n");
+    $call_back_url = $arr['callback_url'];
+}
+else
+{
+    print '$canvas_url = \'http://apps.facebook.com/'.$arr->canvas_name."';" . "\n";
+    fwrite($FH, '$canvas_url = \'http://apps.facebook.com/'.$arr->canvas_name."';" . "\n");
+    print '$kt_default_post_add_url = \'http://apps.facebook.com/'.$arr->canvas_name."';" . "\n";
+    fwrite($FH, '$kt_default_post_add_url = \'http://apps.facebook.com/'.$arr->canvas_name."';" . "\n");
+    $call_back_url = $arr->callback_url;
+}
 
-// default post add url. Don't need this anymore for the new facebook.
-print '$kt_default_post_add_url = \'http://apps.facebook.com/'.$arr->canvas_name."';" . "\n";
-fwrite($FH, '$kt_default_post_add_url = \'http://apps.facebook.com/'.$arr->canvas_name."';" . "\n");
-
-$call_back_url = $arr->callback_url;
 $cb_url_arry = parse_url($call_back_url);
-
 $call_back_host = $cb_url_arry['scheme']."://".$cb_url_arry['host'];
 if(isset($cb_url_arry['port']))
 {

@@ -9,7 +9,10 @@ class Analytics_Utils
     private static $s_profile_types = array('profilebox'=>'profilebox',
                                             'profileinfo'=>'profileinfo');
     private static $s_directed_types = array('in'=>'in', 'nt'=>'nt', 'nte'=>'nte', 'feedpub'=>'feedpub',
-                                             'feedstory'=>'feedstory', 'multifeedstory'=>'multifeedstory');
+                                             'feedstory'=>'feedstory', 'multifeedstory'=>'multifeedstory',
+                                             'dashboardAddNews' => 'dashboardAddNews',
+                                             'dashboardPublishActivity' => 'dashboardPublishActivity',
+                                             'dashboardAddGlobalNews' => 'dashboardAddGlobalNews');
 
     private static $s_kt_args = array('kt_uid'=>1,
                                       'kt_d'=>1,
@@ -257,8 +260,70 @@ class Analytics_Utils
         return $uuid;
         
     }
-        
-    /*
+
+    // return a list of uuid in the same order as the news items in news.
+    public function gen_kt_dashboard_addNews_link(&$news, $subtype1, $subtype2, $subtype3)
+    {
+        $r_uuid_array = array();
+        foreach($news as &$news_item)
+        {
+            if(isset($news_item['action_link']))
+            {
+                //FB only allows one action link per item as far as I know.
+                $query_str;
+                if(isset($news_item['action_link']['href']))
+                {
+                    $uuid = $this->gen_kt_comm_query_str('dashboardAddNews', null, $subtype1, $subtype2, $subtype3, $query_str);
+                    $news_item['action_link']['href'] = $this->append_kt_query_str($news_item['action_link']['href'], $query_str);
+                }
+                else
+                {
+                    // no href? Not my problem.
+                    $uuid = 0;
+                }
+                $r_uuid_array[] = $uuid;
+            }
+        }//foreach
+        return $r_uuid_array;
+    }
+    
+    public function gen_kt_dashboard_addGlobalNews(&$news, $subtype1, $subtype2, $subtype3)
+    {
+        $r_uuid_array = array();
+        foreach($news as &$news_item)
+        {
+            if(isset($news_item['action_link']))
+            {
+                //FB only allows one action link per item as far as I know.
+                $query_str;
+                if(isset($news_item['action_link']['href']))
+                {
+                    $uuid = $this->gen_kt_comm_query_str('dashboardAddGlobalNews', null, $subtype1, $subtype2, $subtype3, $query_str);
+                    $news_item['action_link']['href'] = $this->append_kt_query_str($news_item['action_link']['href'], $query_str);
+                }
+                else
+                {
+                    $uuid = 0;
+                }
+                $r_uuid_array[] = $uuid;
+            }
+        }//foreach
+        return $r_uuid_array;
+    }
+    
+    public function gen_kt_dashboard_publishActivity_link(&$activity, $subtype1, $subtype2, $subtype3)
+    {
+        $uuid = 0;
+        if(isset($activity['action_link']))
+        {
+            $query_str;
+            $uuid = $this->gen_kt_comm_query_str('dashboardPublishActivity', null, $subtype1, $subtype2, $subtype3, $query_str);
+            $activity['action_link']['href'] = $this->append_kt_query_str($activity['action_link']['href'], $query_str);
+        }
+        return $uuid;
+    }
+    
+/*
     private function xmlentities ( $string )
     {
         $arry =  split('&', $string);
@@ -740,8 +805,52 @@ class Analytics_Utils
                                             "gci",
                                             $param_array);
    }
-   
-   
+
+    private function an_dashboardAddNews_click($has_been_added, $uuid, $subtype1, $subtype2, $subtype3, $recipient_uid = null)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "mer",
+                                             array('r' => $recipient_uid,
+                                                   'i' => $has_been_added,
+                                                   'u' => $uuid,
+                                                   'tu' => 'mer',
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3)
+                                             );
+    }
+
+    private function an_dashboardAddPublishActivity_click($has_been_added, $uuid, $subtype1=null, $subtype2=null, $subtype3=null, $recipient_uid = null)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "psr",
+                                             array('r' => $recipient_uid,
+                                                   'i' => $has_been_added,
+                                                   'u' => $uuid,
+                                                   'tu' => 'dashboard_activity',
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3)
+                                             );
+    }
+
+    private function an_dashboardAddGlobalNews_click($has_been_added, $uuid, $subtype1=null, $subtype2=null, $subtype3=null, $recipient_uid = null)
+    {
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             "psr",
+                                             array('r' => $recipient_uid,
+                                                   'i' => $has_been_added,
+                                                   'u' => $uuid,
+                                                   'tu' => 'dashboard_globalnews',
+                                                   'st1' => $subtype1,
+                                                   'st2' => $subtype2,
+                                                   'st3' => $subtype3)
+                                             );
+    }
+    
    public function get_stripped_installed_arg_url()
    {
        $param_array = array();
@@ -1509,6 +1618,93 @@ class Analytics_Utils
                                              'pst',
                                              $arg_array);
     }
+
+    public function kt_dashboard_publish_activity($uuid, $subtype1=null, $subtype2=null, $subtype3=null)
+    {
+        $uid = $this->get_fb_param('user');
+        $arg_array = array('tu'=>'dashboard_activity',
+                           's' => $uid,
+                           'u' => $uuid);
+        if(isset($subtype1))
+            $arg_array['st1'] = $subtype1;
+        if(isset($subtype2))
+            $arg_array['st2'] = $subtype2;
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+
+        $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             'pst',
+                                             $arg_array);
+    }
+
+
+    private function kt_dashboard_addNews_impl($uid, $to_id, $uuid_array, $subtype1=null, $subtype2=null, $subtype3=null)
+    {
+        $arg_array = array('s'=>$uid,
+                           'tu'=>'dashboard');
+        if(is_array($to_id))
+        {
+            $arg_array['r'] = join(",", $to_id);
+        }
+        else
+        {
+            $arg_array['r'] = $to_id;
+        }
+        
+        if(isset($subtype1))
+            $arg_array['st1'] = $subtype1;
+        if(isset($subtype2))
+            $arg_array['st2'] = $subtype2;
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+
+        foreach($uuid_array as $uuid)
+        {
+            $arg_array['u'] = $uuid;
+            $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
+                                                 $this->m_backend_api_key, $this->m_backend_secret_key,
+                                                 'mes',
+                                                 $arg_array);
+        }
+    }
+
+    // $uuid_array: one uuid per news item
+    public function kt_dashboard_addNews($to_id, $uuid_array, $subtype1=null, $subtype2=null, $subtype3=null)
+    {
+        $uid = $this->get_fb_param('user');
+        $this->kt_dashboard_addNews_impl($uid, $to_id, $uuid_array, $subtype1, $subtype2, $subtype3);
+    }
+
+    public function kt_dashboard_addAppToUserNews($to_id, $uuid_array, $subtype1=null, $subtype2=null, $subtype3=null)
+    {
+        $uid = 0;
+        $this->kt_dashboard_addNews_impl($uid, $to_id, $uuid_array, $subtype1, $subtype2, $subtype3);
+    }
+
+    public function kt_dashboard_addGlobalNews($uuid_array, $subtype1=null, $subtype2=null, $subtype3=null)
+    {
+        $uid = 0; // for app
+        $arg_array = array('tu'=>'dashboard_globalnews',
+                           's' => $uid,
+                           );
+        if(isset($subtype1))
+            $arg_array['st1'] = $subtype1;
+        if(isset($subtype2))
+            $arg_array['st2'] = $subtype2;
+        if(isset($subtype3))
+            $arg_array['st3'] = $subtype3;
+
+        foreach($uuid_array as $uuid)
+        {
+            $arg_array['u'] = $uuid;
+            $this->m_aggregator->api_call_method($this->m_backend_url, 'v1',
+                                                 $this->m_backend_api_key, $this->m_backend_secret_key,
+                                                 'pst',
+                                                 $arg_array);
+        }
+    }
+    
     
     public function save_app_added()
     {
@@ -1529,7 +1725,7 @@ class Analytics_Utils
             $this->an_app_added_undirected($uid, $_COOKIE[$this->gen_sut_cookie_key()]); 
             setcookie($this->gen_sut_cookie_key(), "", time()-600); //remove cookie 
         } 
-        else if(isset(isset($_GET['sut']))) 
+        else if(isset($_GET['sut']))
         { 
             $this->an_app_added_undirected($uid, $_GET['sut']); 
         } 
@@ -1898,6 +2094,63 @@ class Analytics_Utils
         }
     }
 
+    public function save_dashboardAddNews_click($added)
+    {
+        $ut = $_GET['kt_ut'];
+
+        $subtype1 = null;
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        $subtype2 = null;
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        $subtype3 = null;
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+
+        $uid = $this->get_fb_param('user');
+        $this->an_dashboardAddNews_click($added, $ut, $subtype1, $subtype2, $subtype3, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+
+    public function save_dashboardPublishActivity_click($added)
+    {
+        $ut = $_GET['kt_ut'];
+        
+        $subtype1 = null;
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        $subtype2 = null;
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        $subtype3 = null;
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+
+        $uid = $this->get_fb_param('user');
+        $this->an_dashboardAddPublishActivity_click($added, $ut, $subtype1, $subtype2, $subtype3, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+
+    public function save_dashboardAddGlobalNews($added)
+    {
+        $ut = $_GET['kt_ut'];
+
+        $subtype1 = null;
+        if(isset($_GET['kt_st1']))
+            $subtype1 = $_GET['kt_st1'];
+        $subtype2 = null;
+        if(isset($_GET['kt_st2']))
+            $subtype2 = $_GET['kt_st2'];
+        $subtype3 = null;
+        if(isset($_GET['kt_st3']))
+            $subtype3 = $_GET['kt_st3'];
+
+        $uid = $this->get_fb_param('user');
+        $this->an_dashboardAddGlobalNews_click($added, $ut, $subtype1, $subtype2, $subtype3, $uid);
+        return $this->get_stripped_kt_args_url();
+    }
+    
     public function increment_goal_count($uid, $goal_id, $inc)
     {
         $this->an_goal_count_increment($uid, array($goal_id => $inc));
