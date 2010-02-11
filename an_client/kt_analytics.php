@@ -790,6 +790,20 @@ class Analytics_Utils
                                              "mtu",
                                              $param_array);
     }
+
+    private function an_event_tracking($uid, $event_name, $value, $level){
+        $param_array = array();
+        $param_array['s'] = $uid;
+        $param_array['n'] = $event_name;
+        if($value != null)
+            $param_array['v'] = $value;
+        if($level != null)
+            $param_array['l'] = $value;
+        $this->m_aggregator->api_call_method($this->m_backend_url, "v1",
+                                             $this->m_backend_api_key, $this->m_backend_secret_key,
+                                             'evt',
+                                             $param_array);
+    }
     
     private function an_goal_count_increment($uid, $goal_counts){
        $param_array = array();
@@ -2165,6 +2179,11 @@ class Analytics_Utils
     public function increment_monetization($uid, $money_value)
     {
         $this->an_monetization_increment($uid, $money_value);
+    }
+
+    public function event_tracking($uid, $event_name, $value=null, $level=null)
+    {
+        $this->an_event_tracking($uid, $event_name, $value, $level);
     }
     
     // Should use cookie to avoid sending repeated information to kontagent.
