@@ -179,7 +179,10 @@ function http_build_query( formdata, numeric_prefix, arg_separator ) {
             }
             return tmp.join(arg_separator);
         } else if(typeof(val) != "function") {
-	  return urlencode(key) + "=" + urlencode(val);
+	  if(val != undefined)
+	    return urlencode(key) + "=" + urlencode(val);
+	  else
+	    return undefined;
         }
     };
 
@@ -191,7 +194,9 @@ function http_build_query( formdata, numeric_prefix, arg_separator ) {
         if (numeric_prefix && !isNaN(key)) {
             key = String(numeric_prefix) + key;
         }
-        tmp.push(_http_build_query_helper(key, value, arg_separator));
+	var key_val_str = _http_build_query_helper(key, value, arg_separator);
+	if(key_val_str != undefined)
+	  tmp.push(key_val_str);
     }
 
     return tmp.join(arg_separator);
@@ -358,3 +363,65 @@ function append_kt_query_str(original_url, query_str)
   }
 }
 
+
+function parse_str(query_str){
+  var r = {};
+  if(query_str == undefined || query_str == "")
+    return r;
+
+  var key_val_pair_list = query_str.split('&');
+  var key_val_pair_list_len = key_val_pair_list.length;
+  for(var i = 0 ; i < key_val_pair_list_len; i++)
+  {
+    var key_val_pair = key_val_pair_list[i];
+    var item = key_val_pair.split("=");
+    if(item[1] == undefined || item[1] =="")
+    {
+      r[item[0]] = null;
+    }
+    else
+    {
+      r[item[0]] = decodeURIComponent(item[1].replace(/\+/g, '%20'));
+    }
+  }
+  return r;
+}
+
+function KT(){
+  //TODO: SHOULD LOOK AT BEAR'S coode
+  this.api_host = 'http://api.test.kontagent.net';
+  this.version = 'v1';
+  this.kt_api_key = '1111';
+};
+
+KT.prototype = {
+  _gen_link : function(channel, data)
+  {
+    var qs = http_build_query(data);
+    var url_path = this.api_host + "/" + this.version + "/" + this.kt_api_key + "/" + channel + "/?" + qs;
+    return url_path;
+  },
+
+  save_stream_click : function(_GET)
+  {
+    var data = { r   : 'RECIPIENT_ID',
+		 i   : 1,
+		 u   : _GET['kt_ut'],
+		 tu  : 'stream',
+		 st1 : _GET['kt_st1'],
+		 st2 : _GET['kt_st2'],
+		 st3 : _GET['kt_st3']
+	       };
+
+    var kt_url = this._gen_link('psr', data);
+    console.log(kt_url);//xxx
+    //TODO: call bear's KtOutboundMsg()
+    // KT.prototype.bar = foo;
+    //this.ktOutboundMsg();
+  },
+
+  save_invite_click : function()
+  {
+
+  }
+};
