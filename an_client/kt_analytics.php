@@ -1723,7 +1723,7 @@ class Analytics_Utils
     
     public function save_app_added()
     {
-<        $has_direction = isset($_GET['d']); 
+        $has_direction = isset($_GET['d']); 
         $uid = $this->get_fb_param('user');
 
         if(!empty($_COOKIE[$this->gen_ut_cookie_key()])) 
