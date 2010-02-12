@@ -949,9 +949,10 @@ class Analytics_Utils
            }
 
            // if there are slashes around the script_name (/index.php/), strip the one in the front.
-           if($script_name[0] == "/")
+           if(strlen($script_name) > 0 && $script_name[0] == "/")
                $script_name = substr($script_name, 1);
-       
+           else
+               $script_name = "";
        
            $len = strlen($this->m_canvas_url);
                         
@@ -1722,7 +1723,7 @@ class Analytics_Utils
     
     public function save_app_added()
     {
-        $has_direction = isset($_GET['d']); 
+<        $has_direction = isset($_GET['d']); 
         $uid = $this->get_fb_param('user');
 
         if(!empty($_COOKIE[$this->gen_ut_cookie_key()])) 
@@ -1895,7 +1896,7 @@ class Analytics_Utils
     }
 
     // returns the short_tag;
-    public function save_undirected_comm_click($added)
+    public function save_undirected_comm_click($added, $short_tag_only=false)
     {
         $uid = $this->get_fb_param('user');
         
@@ -1924,7 +1925,10 @@ class Analytics_Utils
         $short_tag = $this->gen_short_uuid();
         $this->an_app_undirected_comm_click($uid, $type, $template_id, $subtype1, $subtype2, $subtype3, $added, $short_tag);
 
-        return $this->get_stripped_kt_args_url($short_tag);
+        if($short_tag_only)
+            return $short_tag;
+        else
+            return $this->get_stripped_kt_args_url($short_tag);
     }
 
     public function save_feedpub_click($added)
