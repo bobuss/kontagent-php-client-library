@@ -10,6 +10,7 @@ class Analytics_Utils
                                             'profileinfo'=>'profileinfo');
     private static $s_directed_types = array('in'=>'in', 'nt'=>'nt', 'nte'=>'nte', 'feedpub'=>'feedpub',
                                              'feedstory'=>'feedstory', 'multifeedstory'=>'multifeedstory',
+                                             'stream' => 'stream',
                                              'dashboardAddNews' => 'dashboardAddNews',
                                              'dashboardPublishActivity' => 'dashboardPublishActivity',
                                              'dashboardAddGlobalNews' => 'dashboardAddGlobalNews');
@@ -458,6 +459,13 @@ class Analytics_Utils
             return $this->append_kt_query_str($matches, $this->m_query_str_tmp);
     }
     private function replace_kt_comm_link_helper_multifeedstory($matches)
+    {
+        if(is_array($matches))
+            return $this->append_kt_query_str($matches[0], $this->m_query_str_tmp);
+        else if(is_string($matches))
+            return $this->append_kt_query_str($matches, $this->m_query_str_tmp);
+    }
+    private function replace_kt_comm_link_helper_stream($matches)
     {
         if(is_array($matches))
             return $this->append_kt_query_str($matches[0], $this->m_query_str_tmp);
@@ -1153,7 +1161,7 @@ class Analytics_Utils
         
     // for the new feed form
     // it wraps individual links
-    public function gen_feedstory_link($link, $uuid, $subtype1, $subtype2, $subtype3)
+    public function gen_feedstory_link($link, $uuid, $subtype1 = null, $subtype2 = null, $subtype3 = null)
     {
         $this->m_st1_tmp = $subtype1;
         $this->m_st2_tmp = $subtype2;
@@ -1184,7 +1192,7 @@ class Analytics_Utils
     }
     
     
-    public function gen_multifeedstory_link($link, $uuid, $subtype1, $subtype2, $subtype3)
+    public function gen_multifeedstory_link($link, $uuid, $subtype1 = null, $subtype2 = null, $subtype3 = null)
     {
         $this->m_st1_tmp = $subtype1;
         $this->m_st2_tmp = $subtype2;
@@ -1201,6 +1209,34 @@ class Analytics_Utils
                                            array($this, 'replace_kt_comm_link_helper_feedstory'),
                                            $link);
         return $new_value;
+    }
+
+    public function gen_stream_link($link, $uuid, $subtype1 = null, $subtype2 = null, $subtype3 = null)
+    {
+        $this->m_st1_tmp = $subtype1;
+        $this->m_st2_tmp = $subtype2;
+        $this->m_st3_tmp = $subtype3;
+        $query_str;
+        $uuid = $this->gen_kt_comm_query_str('stream', null,
+                                             $this->m_st1_tmp,
+                                             $this->m_st2_tmp,
+                                             $this->m_st3_tmp,
+                                             $query_str,
+                                             $uuid);
+        $this->m_query_str_tmp = $query_str;        
+        $new_value = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
+                                           array($this, 'replace_kt_comm_link_helper_stream'),
+                                           $link);
+        return $new_value;
+    }
+
+    public function gen_stream_link_vo($link, $uuid, $serialized_data)
+    {
+        $info = json_decode(str_replace('\\', '', $serialized_data), true);
+        $st1 = "aB_".$info['campaign']."___".$info['handle_index'];
+        $st2 = $this->format_kt_st2($info['data'][0]);
+        $st3 = $this->format_kt_st3($info['data'][0]);        
+        return $this->gen_stream_link($link, $uuid, $st1, $st2, $st3);
     }
     
     public function gen_multifeedstory_link_vo($link, $uuid, $serialized_data)
