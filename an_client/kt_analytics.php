@@ -1210,8 +1210,24 @@ class Analytics_Utils
                                            $link);
         return $new_value;
     }
+    
+    private function replace_stream_href_links(&$item, $key = NULL) {
+        if (is_object($item)) {
+            foreach($item as $objkey => &$value) {
+                $this->replace_stream_href_links($value, $objkey);
+            }
+        } else if (is_array($item)) {
+            array_walk_recursive($item, 'self::replace_stream_href_links');
+        } else {
+            if ($key === 'href' || !isset($key)) {
+                $item = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
+                                              'self::replace_kt_comm_link_helper_stream',
+                                              $item);
+            }
+        }
+    }
 
-    public function gen_stream_link($link, $uuid, $subtype1 = null, $subtype2 = null, $subtype3 = null)
+    public function gen_stream_link(&$data, $uuid = null, $subtype1 = null, $subtype2 = null, $subtype3 = null)
     {
         $this->m_st1_tmp = $subtype1;
         $this->m_st2_tmp = $subtype2;
@@ -1223,14 +1239,12 @@ class Analytics_Utils
                                              $this->m_st3_tmp,
                                              $query_str,
                                              $uuid);
-        $this->m_query_str_tmp = $query_str;        
-        $new_value = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
-                                           array($this, 'replace_kt_comm_link_helper_stream'),
-                                           $link);
-        return $new_value;
+        $this->m_query_str_tmp = $query_str;
+        $this->replace_stream_href_links($data);
+        return $uuid;
     }
 
-    public function gen_stream_link_vo($link, $uuid, $serialized_data)
+    public function gen_stream_link_vo(&$link, $uuid, $serialized_data)
     {
         $info = json_decode(str_replace('\\', '', $serialized_data), true);
         $st1 = "aB_".$info['campaign']."___".$info['handle_index'];
