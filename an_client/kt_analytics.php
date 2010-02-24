@@ -175,7 +175,7 @@ class Analytics_Utils
                                            $uuid_arg=null, $uid=null){
         $param_array = array();
         $dir_val;       
-        $uuid = 0;
+        $uuid = $uuid_arg;
 
         if($comm_type != null){
             if ($this->is_directed_type($comm_type)){
@@ -202,7 +202,7 @@ class Analytics_Utils
                 }
                 else
                 {
-                    $param_array['kt_ut'] = $uuid_arg;
+                    $param_array['kt_ut'] = $uuid;
                 }
             }
             else if($dir_val == Analytics_Utils::profile_val){
