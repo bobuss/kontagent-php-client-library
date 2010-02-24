@@ -473,6 +473,21 @@ class Analytics_Utils
             return $this->append_kt_query_str($matches, $this->m_query_str_tmp);
     }
 
+    private function replace_stream_href_links(&$item, $key = NULL) {
+        if (is_object($item)) {
+            foreach($item as $objkey => &$value) {
+                $this->replace_stream_href_links($value, $objkey);
+            }
+        } else if (is_array($item)) {
+            array_walk_recursive($item, 'self::replace_stream_href_links');
+        } else {
+            if ($key === 'href' || !isset($key)) {
+                $item = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
+                                              'self::replace_kt_comm_link_helper_stream',
+                                              $item);
+            }
+        }
+    }
     
     private function fill_message_with_ab_message($matches)
     {
@@ -1209,22 +1224,6 @@ class Analytics_Utils
                                            array($this, 'replace_kt_comm_link_helper_feedstory'),
                                            $link);
         return $new_value;
-    }
-    
-    private function replace_stream_href_links(&$item, $key = NULL) {
-        if (is_object($item)) {
-            foreach($item as $objkey => &$value) {
-                $this->replace_stream_href_links($value, $objkey);
-            }
-        } else if (is_array($item)) {
-            array_walk_recursive($item, 'self::replace_stream_href_links');
-        } else {
-            if ($key === 'href' || !isset($key)) {
-                $item = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
-                                              'self::replace_kt_comm_link_helper_stream',
-                                              $item);
-            }
-        }
     }
 
     public function gen_stream_link(&$data, $uuid = null, $subtype1 = null, $subtype2 = null, $subtype3 = null)
