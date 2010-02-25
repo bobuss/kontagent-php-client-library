@@ -216,9 +216,37 @@ class Kt_FacebookRestClient extends FacebookRestClient
 
         $msg_action = json_encode($msg_action);
         $msg_attachment = json_encode($msg_attachment);
-        $r = parent::stream_publish($msg_attachment, $msg_attachment, $action_links, $target_id, $uid);
+        $r = parent::stream_publish($message, $msg_attachment, $msg_action, $target_id, $uid);
         if(!empty($r))
             $this->m_an->kt_stream_send($uuid, $st1, $st2);
+        return $r;
+    }
+
+    public function stream_publish_vo($campaign_name, $attachment = null, 
+                                      $action_links = null, $target_id = null,
+                                      $uid = null,
+                                      $msg_data_array=null, $page_data_array=null)
+    {
+        $msg_info_array = $this->m_an->m_ab_testing_mgr->get_selected_msg_info($campaign_name, $msg_data_array);
+        $page_info = $this->m_an->m_ab_testing_mgr->get_selected_page_info($campaign_name, $page_data_array);
+
+        $msg_id = $msg_info_array[0];
+        $msg_text = $msg_info_array[2];
+
+        $st1 = $this->m_an->format_kt_st1($campaign_name);
+        $st2 = $this->m_an->format_kt_st2($msg_id);
+        $st3 = $this->m_an->format_kt_st3($page_info[0]);
+
+        $msg_action = json_decode($action_links);
+        $msg_attachment = json_decode($attachment);
+        $uuid = $this->m_an->gen_stream_link($msg_action, null, $st1, $st2, $st3);
+        $this->m_an->gen_stream_link($msg_attachment, $uuid, $st1, $st2, $st3);
+
+        $msg_action = json_encode($msg_action);
+        $msg_attachment = json_encode($msg_attachment);
+        $r = parent::stream_publish($msg_text, $msg_attachment, $msg_action, $target_id, $uid);
+        if(!empty($r))
+            $this->m_an->kt_stream_send($uuid, $st1, $st2, $st3);
         return $r;
     }
 
