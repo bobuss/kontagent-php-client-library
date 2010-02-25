@@ -414,7 +414,6 @@ KT.prototype = {
 	       };
 
     var kt_url = this._gen_link('psr', data);
-    console.log(kt_url);//xxx
     //TODO: call bear's KtOutboundMsg()
     // KT.prototype.bar = foo;
     //this.ktOutboundMsg();
@@ -424,4 +423,5 @@ KT.prototype = {
   {
 
   }
+
 };
