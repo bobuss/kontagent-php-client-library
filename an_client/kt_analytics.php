@@ -10,6 +10,7 @@ class Analytics_Utils
                                             'profileinfo'=>'profileinfo');
     private static $s_directed_types = array('in'=>'in', 'nt'=>'nt', 'nte'=>'nte', 'feedpub'=>'feedpub',
                                              'feedstory'=>'feedstory', 'multifeedstory'=>'multifeedstory',
+                                             'stream' => 'stream',
                                              'dashboardAddNews' => 'dashboardAddNews',
                                              'dashboardPublishActivity' => 'dashboardPublishActivity',
                                              'dashboardAddGlobalNews' => 'dashboardAddGlobalNews');
@@ -174,7 +175,7 @@ class Analytics_Utils
                                            $uuid_arg=null, $uid=null){
         $param_array = array();
         $dir_val;       
-        $uuid = 0;
+        $uuid = $uuid_arg;
 
         if($comm_type != null){
             if ($this->is_directed_type($comm_type)){
@@ -201,7 +202,7 @@ class Analytics_Utils
                 }
                 else
                 {
-                    $param_array['kt_ut'] = $uuid_arg;
+                    $param_array['kt_ut'] = $uuid;
                 }
             }
             else if($dir_val == Analytics_Utils::profile_val){
@@ -464,7 +465,29 @@ class Analytics_Utils
         else if(is_string($matches))
             return $this->append_kt_query_str($matches, $this->m_query_str_tmp);
     }
+    private function replace_kt_comm_link_helper_stream($matches)
+    {
+        if(is_array($matches))
+            return $this->append_kt_query_str($matches[0], $this->m_query_str_tmp);
+        else if(is_string($matches))
+            return $this->append_kt_query_str($matches, $this->m_query_str_tmp);
+    }
 
+    private function replace_stream_href_links(&$item, $key = NULL) {
+        if (is_object($item)) {
+            foreach($item as $objkey => &$value) {
+                $this->replace_stream_href_links($value, $objkey);
+            }
+        } else if (is_array($item)) {
+            array_walk_recursive($item, 'self::replace_stream_href_links');
+        } else {
+            if ($key === 'href' || !isset($key)) {
+                $item = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
+                                              'self::replace_kt_comm_link_helper_stream',
+                                              $item);
+            }
+        }
+    }
     
     private function fill_message_with_ab_message($matches)
     {
@@ -1153,7 +1176,7 @@ class Analytics_Utils
         
     // for the new feed form
     // it wraps individual links
-    public function gen_feedstory_link($link, $uuid, $subtype1, $subtype2, $subtype3)
+    public function gen_feedstory_link($link, $uuid, $subtype1 = null, $subtype2 = null, $subtype3 = null)
     {
         $this->m_st1_tmp = $subtype1;
         $this->m_st2_tmp = $subtype2;
@@ -1184,7 +1207,7 @@ class Analytics_Utils
     }
     
     
-    public function gen_multifeedstory_link($link, $uuid, $subtype1, $subtype2, $subtype3)
+    public function gen_multifeedstory_link($link, $uuid, $subtype1 = null, $subtype2 = null, $subtype3 = null)
     {
         $this->m_st1_tmp = $subtype1;
         $this->m_st2_tmp = $subtype2;
@@ -1201,6 +1224,32 @@ class Analytics_Utils
                                            array($this, 'replace_kt_comm_link_helper_feedstory'),
                                            $link);
         return $new_value;
+    }
+
+    public function gen_stream_link(&$data, $uuid = null, $subtype1 = null, $subtype2 = null, $subtype3 = null)
+    {
+        $this->m_st1_tmp = $subtype1;
+        $this->m_st2_tmp = $subtype2;
+        $this->m_st3_tmp = $subtype3;
+        $query_str;
+        $uuid = $this->gen_kt_comm_query_str('stream', null,
+                                             $this->m_st1_tmp,
+                                             $this->m_st2_tmp,
+                                             $this->m_st3_tmp,
+                                             $query_str,
+                                             $uuid);
+        $this->m_query_str_tmp = $query_str;
+        $this->replace_stream_href_links($data);
+        return $uuid;
+    }
+
+    public function gen_stream_link_vo(&$link, $uuid, $serialized_data)
+    {
+        $info = json_decode(str_replace('\\', '', $serialized_data), true);
+        $st1 = "aB_".$info['campaign']."___".$info['handle_index'];
+        $st2 = $this->format_kt_st2($info['data'][0]);
+        $st3 = $this->format_kt_st3($info['data'][0]);        
+        return $this->gen_stream_link($link, $uuid, $st1, $st2, $st3);
     }
     
     public function gen_multifeedstory_link_vo($link, $uuid, $serialized_data)

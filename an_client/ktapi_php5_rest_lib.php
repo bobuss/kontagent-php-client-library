@@ -205,7 +205,23 @@ class Kt_FacebookRestClient extends FacebookRestClient
         return $r;
     }
 
-    
+    public function stream_publish($message, $attachment = null, 
+                                   $action_links = null, $target_id = null,
+                                   $uid = null, $st1 = null, $st2 = null)
+    {
+        $msg_action = json_decode($action_links);
+        $msg_attachment = json_decode($attachment);
+        $uuid = $this->m_an->gen_stream_link($msg_action, null, $st1, $st2);
+        $this->m_an->gen_stream_link($msg_attachment, $uuid, $st1, $st2);
+
+        $msg_action = json_encode($msg_action);
+        $msg_attachment = json_encode($msg_attachment);
+        $r = parent::stream_publish($msg_attachment, $msg_attachment, $action_links, $target_id, $uid);
+        if(!empty($r))
+            $this->m_an->kt_stream_send($uuid, $st1, $st2);
+        return $r;
+    }
+
     function profile_setFBML($markup,
                              $uid=null,
                              $profile='',
