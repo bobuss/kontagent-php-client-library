@@ -479,11 +479,11 @@ class Analytics_Utils
                 $this->replace_stream_href_links($value, $objkey);
             }
         } else if (is_array($item)) {
-            array_walk_recursive($item, 'self::replace_stream_href_links');
+            array_walk_recursive($item, array($this, 'replace_stream_href_links'));
         } else {
             if ($key === 'href' || !isset($key)) {
                 $item = preg_replace_callback(self::URL_REGEX_STR_NO_HREF,
-                                              'self::replace_kt_comm_link_helper_stream',
+                                              array($this, 'replace_kt_comm_link_helper_stream'),
                                               $item);
             }
         }
